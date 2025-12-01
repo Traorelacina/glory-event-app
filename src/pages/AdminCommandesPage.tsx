@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import AdminLayout from '../components/AdminLayout';
-import { useAuthStore } from '../../store/authStore';
+import { useAuthStore } from '../../store/AuthStore';
 import { Search, Loader, AlertCircle, Eye, Package, X, Check, Clock, Truck, XCircle, Sparkles, Star, ArrowRight, Users, TrendingUp } from 'lucide-react';
 
 interface Produit {
