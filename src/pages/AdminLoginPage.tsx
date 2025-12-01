@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../../store/authStore';
+import { useAuthStore } from '../../store/AuthStore';
 import { Mail, Lock, AlertCircle, Loader, Sparkles, Star, CheckCircle, ArrowRight } from 'lucide-react';
 
 export default function AdminLoginPage() {
