@@ -84,7 +84,7 @@ export default function AdminProduitsPage() {
     if (!token) return;
     try {
       setLoading(true);
-      const response = await fetch('http://127.0.0.1:8000/api/admin/produits', {
+      const response = await fetch('https://detailed-odette-freelence-76d5d470.koyeb.app/api/admin/produits', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
@@ -144,7 +144,7 @@ export default function AdminProduitsPage() {
       in_stock: produit.in_stock,
       featured: produit.featured,
     });
-    setImagePreview(`http://127.0.0.1:8000/storage/${produit.image}`);
+    setImagePreview(`https://detailed-odette-freelence-76d5d470.koyeb.app/storage/${produit.image}`);
     setSelectedImage(null);
     setShowForm(true);
     setError(null);
@@ -191,8 +191,8 @@ export default function AdminProduitsPage() {
       }
 
       const url = editingProduct 
-  ? `http://127.0.0.1:8000/api/admin/produits/${editingProduct.id}`
-  : 'http://127.0.0.1:8000/api/admin/produits';
+  ? `https://detailed-odette-freelence-76d5d470.koyeb.app/api/admin/produits/${editingProduct.id}`
+  : 'https://detailed-odette-freelence-76d5d470.koyeb.app/api/admin/produits';
 
 // Toujours utiliser POST
 const method = 'POST';
@@ -273,7 +273,7 @@ const response = await fetch(url, {
     if (!token) return;
 
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/admin/produits/${id}`, {
+      const response = await fetch(`https://detailed-odette-freelence-76d5d470.koyeb.app/api/admin/produits/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
