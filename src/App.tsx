@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Header from './components/Header';
 import HomePage from './pages/HomePage';
 import ServicesPage from './pages/ServicesPage';
@@ -13,7 +13,7 @@ import AdminProduitsPage from './pages/AdminProduitsPage';
 import AdminCommandesPage from './pages/AdminCommandesPage';
 import AdminContactsPage from './pages/AdminContactsPage';
 import ProtectedRoute from './components/ProtectedRoute';
-import { statisticsService } from '../services/statisticsService'; // Chemin corrigé
+import { statisticsService } from '../services/statisticsService';
 
 // Composant pour le tracking des pages
 function PageTracker() {
@@ -34,6 +34,11 @@ function PageTracker() {
       '/cart': 'cart',
       '/gallery': 'gallery',
       '/contact': 'contact',
+      '/admin/login': 'admin_login',
+      '/admin/dashboard': 'admin_dashboard',
+      '/admin/produits': 'admin_produits',
+      '/admin/commandes': 'admin_commandes',
+      '/admin/contacts': 'admin_contacts',
     };
     
     return routes[path] || null;
@@ -42,7 +47,9 @@ function PageTracker() {
   return null;
 }
 
-function App() {
+// Layout pour les pages publiques (avec Header)
+function PublicLayout({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
   const [currentPage, setCurrentPage] = useState('home');
   const [selectedService, setSelectedService] = useState<string | undefined>();
 
@@ -54,67 +61,149 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Mettre à jour currentPage basé sur l'URL
+  useEffect(() => {
+    const path = location.pathname;
+    if (path === '/') setCurrentPage('home');
+    else if (path === '/services') setCurrentPage('services');
+    else if (path === '/boutique') setCurrentPage('boutique');
+    else if (path === '/cart') setCurrentPage('cart');
+    else if (path === '/gallery') setCurrentPage('gallery');
+    else if (path === '/contact') setCurrentPage('contact');
+  }, [location.pathname]);
+
   return (
-    <BrowserRouter>
-      {/* AJOUTEZ CETTE LIGNE : PageTracker doit être utilisé */}
+    <>
+      <Header currentPage={currentPage} onNavigate={handleNavigate} />
+      {children}
+    </>
+  );
+}
+
+// Layout pour les pages admin (sans Header)
+function AdminLayout({ children }: { children: React.ReactNode }) {
+  return <div className="min-h-screen bg-gray-50">{children}</div>;
+}
+
+function App() {
+  return (
+    <Router>
       <PageTracker />
       
       <Routes>
-        {/* Pages publiques */}
-        <Route
-          path="/"
+        {/* Pages publiques avec Header */}
+        <Route 
+          path="/" 
           element={
-            <>
-              <Header currentPage={currentPage} onNavigate={handleNavigate} />
-              {currentPage === 'home' && <HomePage onNavigate={handleNavigate} />}
-              {currentPage === 'services' && <ServicesPage onNavigate={handleNavigate} />}
-              {currentPage === 'boutique' && <BoutiquePage onNavigate={handleNavigate} />}
-              {currentPage === 'cart' && <CartPage onNavigate={handleNavigate} />}
-              {currentPage === 'gallery' && <GalleryPage />}
-              {currentPage === 'contact' && <ContactPage selectedService={selectedService} />}
-            </>
-          }
+            <PublicLayout>
+              <HomePage />
+            </PublicLayout>
+          } 
+        />
+        
+        <Route 
+          path="/services" 
+          element={
+            <PublicLayout>
+              <ServicesPage />
+            </PublicLayout>
+          } 
+        />
+        
+        <Route 
+          path="/boutique" 
+          element={
+            <PublicLayout>
+              <BoutiquePage />
+            </PublicLayout>
+          } 
+        />
+        
+        <Route 
+          path="/cart" 
+          element={
+            <PublicLayout>
+              <CartPage />
+            </PublicLayout>
+          } 
+        />
+        
+        <Route 
+          path="/gallery" 
+          element={
+            <PublicLayout>
+              <GalleryPage />
+            </PublicLayout>
+          } 
+        />
+        
+        <Route 
+          path="/contact" 
+          element={
+            <PublicLayout>
+              <ContactPage />
+            </PublicLayout>
+          } 
         />
 
-        {/* Pages admin */}
-        <Route path="/admin/login" element={<AdminLoginPage />} />
-        <Route
-          path="/admin/dashboard"
+        {/* Pages admin sans Header */}
+        <Route 
+          path="/admin/login" 
           element={
-            <ProtectedRoute>
-              <AdminDashboardPage />
-            </ProtectedRoute>
-          }
+            <AdminLayout>
+              <AdminLoginPage />
+            </AdminLayout>
+          } 
         />
-        <Route
-          path="/admin/produits"
+        
+        <Route 
+          path="/admin/dashboard" 
           element={
             <ProtectedRoute>
-              <AdminProduitsPage />
+              <AdminLayout>
+                <AdminDashboardPage />
+              </AdminLayout>
             </ProtectedRoute>
-          }
+          } 
         />
-        <Route
-          path="/admin/commandes"
+        
+        <Route 
+          path="/admin/produits" 
           element={
             <ProtectedRoute>
-              <AdminCommandesPage />
+              <AdminLayout>
+                <AdminProduitsPage />
+              </AdminLayout>
             </ProtectedRoute>
-          }
+          } 
         />
-        <Route
-          path="/admin/contacts"
+        
+        <Route 
+          path="/admin/commandes" 
           element={
             <ProtectedRoute>
-              <AdminContactsPage />
+              <AdminLayout>
+                <AdminCommandesPage />
+              </AdminLayout>
             </ProtectedRoute>
-          }
+          } 
+        />
+        
+        <Route 
+          path="/admin/contacts" 
+          element={
+            <ProtectedRoute>
+              <AdminLayout>
+                <AdminContactsPage />
+              </AdminLayout>
+            </ProtectedRoute>
+          } 
         />
 
         {/* Redirection par défaut */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </BrowserRouter>
+    </Router>
   );
 }
 
