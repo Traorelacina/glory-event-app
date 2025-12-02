@@ -1,8 +1,8 @@
 // Configuration API - TOUJOURS utiliser l'URL de production
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://detailed-odette-freelence-76d5d470.koyeb.app/api';
+// Configuration API - URL fixe de production
+const API_BASE_URL = 'https://detailed-odette-freelence-76d5d470.koyeb.app/api';
 
-console.log('API Base URL:', API_BASE_URL); // Pour debug
-console.log('Node Environment:', process.env.NODE_ENV); // Pour debug
+console.log('API Base URL:', API_BASE_URL);
 
 export interface LoginCredentials {
   email: string;
@@ -168,7 +168,11 @@ export const viewApi = {
     try {
       const response = await fetchWithTimeout(`${API_BASE_URL}/track-view`, {
         method: 'POST',
-        body: JSON.stringify({ page_name: pageName }),
+        body: JSON.stringify({ 
+          page_name: pageName,
+          url: window.location.href,
+          timestamp: new Date().toISOString()
+        }),
       }, 8000);
       
       return handleResponse(response);
@@ -178,6 +182,21 @@ export const viewApi = {
       return { success: false, message: 'View not tracked (non-critical error)' };
     }
   },
+  
+  // Version simplifiée pour le tracking
+  trackViewSimple: async (pageName: string) => {
+    try {
+      await fetch(`${API_BASE_URL}/track-view`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ page_name: pageName }),
+      });
+    } catch (error) {
+      // Silencieux en cas d'erreur
+    }
+  }
 };
 
 // Fonction utilitaire pour tester la connexion
