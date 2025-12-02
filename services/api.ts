@@ -1,16 +1,8 @@
-// Configuration dynamique selon l'environnement
-const getApiBaseUrl = () => {
-  // Si en production (Netlify) ou si variable d'environnement définie
-  if (process.env.NODE_ENV === 'production' || process.env.REACT_APP_API_URL) {
-    return process.env.REACT_APP_API_URL || 'https://detailed-odette-freelence-76d5d470.koyeb.app/api';
-  }
-  // Sinon, développement local
-  return 'http://localhost:8000/api';
-};
-
-const API_BASE_URL = getApiBaseUrl();
+// Configuration API - TOUJOURS utiliser l'URL de production
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://detailed-odette-freelence-76d5d470.koyeb.app/api';
 
 console.log('API Base URL:', API_BASE_URL); // Pour debug
+console.log('Node Environment:', process.env.NODE_ENV); // Pour debug
 
 export interface LoginCredentials {
   email: string;
@@ -34,32 +26,31 @@ export interface ApiError {
 }
 
 async function handleResponse(response: Response) {
-  // Vérifiez d'abord si la réponse est vide
-  const contentType = response.headers.get('content-type');
-  
-  if (!contentType || !contentType.includes('application/json')) {
-    throw {
-      message: 'Réponse non-JSON du serveur',
-      status: response.status,
-      statusText: response.statusText
-    } as ApiError;
-  }
-
-  const data = await response.json();
-
   if (!response.ok) {
-    throw {
-      message: data.message || `Erreur ${response.status}: ${response.statusText}`,
-      errors: data.errors,
-      status: response.status
-    } as ApiError;
+    let errorMessage = `Erreur ${response.status}: ${response.statusText}`;
+    
+    try {
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const data = await response.json();
+        errorMessage = data.message || errorMessage;
+      }
+    } catch (e) {
+      // Ignorer si pas JSON
+    }
+    
+    throw { message: errorMessage, status: response.status } as ApiError;
   }
-
-  return data;
+  
+  const contentType = response.headers.get('content-type');
+  if (contentType && contentType.includes('application/json')) {
+    return await response.json();
+  }
+  
+  return {};
 }
 
-// Fonction fetch avec timeout et gestion d'erreurs améliorée
-const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout = 10000) => {
+const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout = 15000) => {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
 
@@ -69,21 +60,33 @@ const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout 
       signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
         ...options.headers,
       },
+      mode: 'cors',
     });
+    
     clearTimeout(id);
     return response;
   } catch (error: any) {
     clearTimeout(id);
+    
     if (error.name === 'AbortError') {
       throw {
-        message: 'Timeout: La requête a pris trop de temps',
+        message: 'Timeout: La requête a pris trop de temps (>15s)',
         timeout: true
       } as ApiError;
     }
+    
+    if (error.message?.includes('Failed to fetch')) {
+      throw {
+        message: 'Impossible de se connecter au serveur API. Vérifiez votre connexion internet.',
+        networkError: true
+      } as ApiError;
+    }
+    
     throw {
-      message: `Erreur réseau: ${error.message}`,
+      message: `Erreur: ${error.message || 'Erreur inconnue'}`,
       networkError: true
     } as ApiError;
   }
@@ -91,6 +94,8 @@ const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout 
 
 export const authApi = {
   login: async (credentials: LoginCredentials): Promise<LoginResponse> => {
+    console.log('Login attempt to:', `${API_BASE_URL}/login`);
+    
     const response = await fetchWithTimeout(`${API_BASE_URL}/login`, {
       method: 'POST',
       body: JSON.stringify(credentials),
@@ -109,17 +114,17 @@ export const authApi = {
 
     return handleResponse(response);
   },
-
-  // Optionnel: Vérifier si l'API est accessible
-  checkConnection: async (): Promise<{ status: string; message: string }> => {
+  
+  checkHealth: async (): Promise<{ status: string; message: string }> => {
     try {
-      const response = await fetchWithTimeout(`${API_BASE_URL}/health`, {}, 5000);
-      return await response.json();
-    } catch (error) {
-      throw {
-        message: 'Impossible de se connecter au serveur API',
-        details: error
-      } as ApiError;
+      const response = await fetchWithTimeout(`${API_BASE_URL}/health`, {}, 8000);
+      const data = await response.json();
+      return { status: 'success', message: data.message || 'API is healthy' };
+    } catch (error: any) {
+      return { 
+        status: 'error', 
+        message: error.message || 'API health check failed' 
+      };
     }
   }
 };
@@ -156,22 +161,58 @@ export const adminApi = {
   },
 };
 
+export const viewApi = {
+  trackView: async (pageName: string) => {
+    console.log('Tracking view for page:', pageName);
+    
+    try {
+      const response = await fetchWithTimeout(`${API_BASE_URL}/track-view`, {
+        method: 'POST',
+        body: JSON.stringify({ page_name: pageName }),
+      }, 8000);
+      
+      return handleResponse(response);
+    } catch (error: any) {
+      console.warn('View tracking failed (non-critical):', error.message);
+      // Ne pas jeter l'erreur pour ne pas interrompre l'expérience utilisateur
+      return { success: false, message: 'View not tracked (non-critical error)' };
+    }
+  },
+};
+
 // Fonction utilitaire pour tester la connexion
 export const testApiConnection = async () => {
-  console.log('Testing connection to:', API_BASE_URL);
+  console.log('🔄 Testing connection to:', API_BASE_URL);
   
   try {
-    const response = await fetch(`${API_BASE_URL}/health`);
+    const response = await fetchWithTimeout(`${API_BASE_URL}/health`, {}, 5000);
+    
     if (response.ok) {
       const data = await response.json();
       console.log('✅ API Connection successful:', data);
-      return { success: true, data };
+      return { 
+        success: true, 
+        url: API_BASE_URL,
+        status: response.status,
+        data 
+      };
     } else {
       console.log('⚠️ API responded with status:', response.status);
-      return { success: false, status: response.status };
+      return { 
+        success: false, 
+        url: API_BASE_URL,
+        status: response.status 
+      };
     }
-  } catch (error) {
-    console.error('❌ API Connection failed:', error);
-    return { success: false, error };
+  } catch (error: any) {
+    console.error('❌ API Connection failed to', API_BASE_URL, ':', error.message);
+    return { 
+      success: false, 
+      url: API_BASE_URL,
+      error: error.message 
+    };
   }
 };
+
+// Export unique de l'URL de base
+export { API_BASE_URL };
