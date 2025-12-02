@@ -8,7 +8,7 @@ interface ContactPageProps {
 }
 
 // API URL
-const API_URL = 'http://127.0.0.1:8000/api';
+const API_URL = 'https://detailed-odette-freelence-76d5d470.koyeb.app/api';
 
 export default function ContactPage({ selectedService, onNavigate }: ContactPageProps) {
   const [formData, setFormData] = useState({
