@@ -8,9 +8,9 @@ interface BoutiquePageProps {
   onNavigate: (page: string) => void;
 }
 
-// API URL
-const API_URL = 'http://127.0.0.1:8000/api';
-const STORAGE_URL = 'http://127.0.0.1:8000/storage';
+// API URL - URL DE PRODUCTION FIXE
+const API_URL = 'https://detailed-odette-freelence-76d5d470.koyeb.app/api';
+const STORAGE_URL = 'https://detailed-odette-freelence-76d5d470.koyeb.app/storage';
 
 export default function BoutiquePage({ onNavigate }: BoutiquePageProps) {
   const { addItem, getTotalItems } = useCartStore();
@@ -29,31 +29,106 @@ export default function BoutiquePage({ onNavigate }: BoutiquePageProps) {
       setLoading(true);
       setError(null);
       
+      console.log('🔄 Fetching products from:', `${API_URL}/produits`);
+      
       const response = await fetch(`${API_URL}/produits`);
       
+      console.log('📊 Response status:', response.status);
+      
       if (!response.ok) {
-        throw new Error('Erreur lors du chargement des produits');
+        throw new Error(`Erreur ${response.status}: ${response.statusText}`);
       }
 
       const data = await response.json();
+      console.log('📦 Received data:', data);
       
-      if (data.success && data.data) {
+      // Deux formats possibles de réponse :
+      // 1. Laravel API Resource: { data: [...] }
+      // 2. Simple array: [...]
+      if (data.data) {
         setProducts(data.data);
+      } else if (Array.isArray(data)) {
+        setProducts(data);
       } else {
         throw new Error('Format de données invalide');
       }
     } catch (err: any) {
-      setError(err.message || 'Erreur de connexion au serveur');
-      console.error('Erreur:', err);
+      const errorMessage = err.message || 'Erreur de connexion au serveur';
+      setError(errorMessage);
+      console.error('❌ Erreur:', err);
+      
+      // Fallback: Données fictives en cas d'échec
+      if (products.length === 0) {
+        console.log('Using fallback data');
+        setProducts(getFallbackProducts());
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  // Données de fallback si l'API échoue
+  const getFallbackProducts = (): Product[] => {
+    return [
+      {
+        id: 1,
+        name: "Parfum d'Exception",
+        description: "Une fragrance unique et envoûtante",
+        price: 29900,
+        image: "https://images.unsplash.com/photo-1541643600914-78b084683601?w=400&h=400&fit=crop",
+        category: "Signature",
+        in_stock: true,
+        featured: true,
+        slug: "parfum-exception"
+      },
+      {
+        id: 2,
+        name: "Élixir de Nuit",
+        description: "Pour les soirées mémorables",
+        price: 34900,
+        image: "https://images.unsplash.com/photo-1590736969954-61b6b9706f99?w-400&h=400&fit=crop",
+        category: "Nocturne",
+        in_stock: true,
+        featured: false,
+        slug: "elixir-nuit"
+      },
+      {
+        id: 3,
+        name: "Essence du Matin",
+        description: "Fraîcheur et vitalité au quotidien",
+        price: 24900,
+        image: "https://images.unsplash.com/photo-1544441893-675973e31985?w=400&h=400&fit=crop",
+        category: "Jour",
+        in_stock: true,
+        featured: true,
+        slug: "essence-matin"
+      },
+      {
+        id: 4,
+        name: "Mystère Oriental",
+        description: "Notes épicées et boisées",
+        price: 39900,
+        image: "https://images.unsplash.com/photo-1590736969954-61b6b9706f99?w=400&h=400&fit=crop",
+        category: "Oriental",
+        in_stock: true,
+        featured: false,
+        slug: "mystere-oriental"
+      }
+    ];
+  };
+
   const getImageUrl = (imagePath: string) => {
-    if (!imagePath) return '';
-    if (imagePath.startsWith('http')) return imagePath;
-    return `${STORAGE_URL}/${imagePath}`;
+    if (!imagePath) {
+      return 'https://images.unsplash.com/photo-1541643600914-78b084683601?w=400&h=400&fit=crop';
+    }
+    
+    if (imagePath.startsWith('http')) {
+      return imagePath;
+    }
+    
+    // Nettoyer le chemin si nécessaire
+    const cleanPath = imagePath.replace(/^\/+/, '');
+    return `${STORAGE_URL}/${cleanPath}`;
   };
 
   const getFallbackImage = () => {
@@ -118,12 +193,20 @@ export default function BoutiquePage({ onNavigate }: BoutiquePageProps) {
               <AlertCircle className="text-red-600 flex-shrink-0" size={28} />
               <div className="flex-1">
                 <p className="text-red-800 font-semibold text-lg">{error}</p>
-                <button 
-                  onClick={fetchProducts}
-                  className="text-red-600 underline text-sm mt-2 hover:text-red-700 font-medium"
-                >
-                  Réessayer
-                </button>
+                <div className="flex gap-4 mt-4">
+                  <button 
+                    onClick={fetchProducts}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
+                  >
+                    Réessayer
+                  </button>
+                  <button 
+                    onClick={() => setError(null)}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors"
+                  >
+                    Masquer
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -135,6 +218,7 @@ export default function BoutiquePage({ onNavigate }: BoutiquePageProps) {
                 <Loader className="animate-spin text-white" size={32} />
               </div>
               <p className="text-gray-600 font-medium text-xl">Chargement des produits...</p>
+              <p className="text-gray-400 text-sm mt-2">API: {API_URL}</p>
             </div>
           ) : filteredProducts.length === 0 ? (
             <div className="text-center py-24 bg-white rounded-3xl shadow-xl border border-slate-100">
@@ -157,6 +241,12 @@ export default function BoutiquePage({ onNavigate }: BoutiquePageProps) {
             </div>
           ) : (
             <>
+              {/* INFO DEBUG */}
+              <div className="mb-6 p-4 bg-blue-50 rounded-xl text-sm text-blue-700">
+                <p><strong>API:</strong> {API_URL}</p>
+                <p><strong>Produits chargés:</strong> {filteredProducts.length}</p>
+              </div>
+
               {/* GRID PRODUITS */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 mb-16">
                 {filteredProducts.map((product) => (
