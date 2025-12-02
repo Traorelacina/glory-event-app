@@ -24,8 +24,8 @@ interface Commande {
 }
 
 // API URLs
-const API_URL = 'http://127.0.0.1:8000/api';
-const STORAGE_URL = 'http://127.0.0.1:8000/storage';
+const API_URL = 'https://detailed-odette-freelence-76d5d470.koyeb.app/api';
+const STORAGE_URL = 'https://detailed-odette-freelence-76d5d470.koyeb.app/storage';
 
 export default function AdminCommandesPage() {
   const { token } = useAuthStore();
