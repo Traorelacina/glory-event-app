@@ -7,8 +7,8 @@ interface CartPageProps {
 }
 
 // API URL
-const API_URL = 'http://127.0.0.1:8000/api';
-const STORAGE_URL = 'http://127.0.0.1:8000/storage';
+const API_URL = 'https://detailed-odette-freelence-76d5d470.koyeb.app/api';
+const STORAGE_URL = 'https://detailed-odette-freelence-76d5d470.koyeb.app/storage';
 
 export default function CartPage({ onNavigate }: CartPageProps) {
   const { items, updateQuantity, removeItem, getTotalPrice, clearCart } = useCartStore();
