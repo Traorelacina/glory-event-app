@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../../store/AuthStore';
+import { useAuthStore } from '../store/AuthStore';
 import { adminApi } from '../../services/api';
 import { statisticsService } from '../../services/statisticsService';
 import { 
   Loader, AlertCircle, Briefcase, Package, ShoppingCart, Clock, 
   Mail, Image, TrendingUp, Activity, Sparkles, Star, ArrowRight,
-  Eye, Calendar, BarChart3
+  Eye, Calendar, BarChart3, Users, Target
 } from 'lucide-react';
 import AdminLayout from '../components/AdminLayout';
+import { Chart, Bars, Transform, Layer, Ticks, Labels } from 'rumble-charts';
 
 interface ViewStatistics {
   total_views: number;
@@ -16,6 +17,7 @@ interface ViewStatistics {
   month_views: number;
   year_views: number;
   daily_views: Array<{ date: string; views: number }>;
+  monthly_views: Array<{ year: number; month: number; views: number }>;
   page_views: Array<{ page_name: string; views: number }>;
 }
 
@@ -229,13 +231,7 @@ export default function AdminDashboardPage() {
                 subtitle="Ce mois-ci"
                 loading={statsLoading}
               />
-              <StatCard 
-                label="Services" 
-                value={stats.total_services} 
-                icon={Briefcase}
-                gradient="from-purple-500 to-indigo-500"
-                subtitle="Services actifs"
-              />
+           
               <StatCard 
                 label="Produits" 
                 value={stats.total_produits} 
@@ -293,6 +289,31 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
+            {/* Section Graphique Mensuel */}
+            <div 
+              id="monthly-stats"
+              data-animate
+              className="mb-8"
+              style={{
+                opacity: isVisible['monthly-stats'] ? 1 : 0,
+                transform: isVisible['monthly-stats'] ? 'translateY(0)' : 'translateY(30px)',
+                transition: 'all 0.8s ease-out 0.35s',
+              }}
+            >
+              <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl p-8 border border-teal-100">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-emerald-500 rounded-xl flex items-center justify-center shadow-lg">
+                    <Calendar className="text-white" size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-900">Vues par Mois</h3>
+                    <p className="text-gray-600">Évolution annuelle (Janvier - Décembre)</p>
+                  </div>
+                </div>
+                <MonthlyViewsChart data={viewStats?.monthly_views || []} loading={statsLoading} />
+              </div>
+            </div>
+
             {/* Section Détails des Statistiques */}
             <div 
               id="detailed-stats"
@@ -312,7 +333,7 @@ export default function AdminDashboardPage() {
                   </div>
                   <h3 className="text-2xl font-bold text-gray-900">Performance des Pages</h3>
                 </div>
-                <PageViewsTable data={viewStats?.page_views || []} loading={statsLoading} />
+                <PageViewsChart data={viewStats?.page_views || []} loading={statsLoading} />
               </div>
 
               {/* Statistiques récentes */}
@@ -428,143 +449,399 @@ export default function AdminDashboardPage() {
   );
 }
 
-// Composant pour le graphique à barres
-interface ViewsBarChartProps {
-  data: Array<{ date: string; views: number }>;
+// Composant pour le graphique mensuel
+interface MonthlyViewsChartProps {
+  data: Array<{ year: number; month: number; views: number }>;
   loading: boolean;
 }
 
-function ViewsBarChart({ data, loading }: ViewsBarChartProps) {
+function MonthlyViewsChart({ data, loading }: MonthlyViewsChartProps) {
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+
   if (loading) {
     return (
-      <div className="h-96 flex flex-col items-center justify-center bg-gradient-to-br from-indigo-50 to-blue-50 rounded-2xl">
-        <Loader className="animate-spin text-indigo-600 mb-4" size={40} />
+      <div className="h-96 flex flex-col items-center justify-center bg-gradient-to-br from-teal-50 to-emerald-50 rounded-2xl">
+        <Loader className="animate-spin text-teal-600 mb-4" size={40} />
         <p className="text-gray-700 font-semibold">Chargement du graphique...</p>
-        <p className="text-gray-500 text-sm mt-2">Analyse des vues quotidiennes</p>
+        <p className="text-gray-500 text-sm mt-2">Analyse des vues mensuelles</p>
       </div>
     );
   }
 
-  // Si pas de données, affiche un message avec style
   if (!data || data.length === 0) {
     return (
-      <div className="h-96 flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-blue-50 rounded-2xl border-2 border-dashed border-gray-300">
+      <div className="h-96 flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-slate-50 rounded-2xl border-2 border-dashed border-gray-300">
         <BarChart3 className="w-20 h-20 mb-4 text-gray-400" />
-        <p className="text-xl font-bold text-gray-600 mb-2">Aucune donnée disponible</p>
-        <p className="text-gray-500 text-center max-w-md">
-          Les statistiques de vues des derniers jours apparaîtront ici dès que vos visiteurs navigueront sur votre site.
-        </p>
-        <div className="mt-6 flex gap-4">
-          <div className="text-center">
-            <div className="w-4 h-16 bg-indigo-200 rounded-t mx-auto"></div>
-            <p className="text-xs text-gray-500 mt-2">Aucune vue</p>
-          </div>
-          <div className="text-center">
-            <div className="w-4 h-8 bg-indigo-300 rounded-t mx-auto"></div>
-            <p className="text-xs text-gray-500 mt-2">Données à venir</p>
-          </div>
-          <div className="text-center">
-            <div className="w-4 h-12 bg-indigo-400 rounded-t mx-auto"></div>
-            <p className="text-xs text-gray-500 mt-2">Graphique actif</p>
-          </div>
-        </div>
+        <p className="text-xl font-bold text-gray-600 mb-2">Aucune donnée mensuelle</p>
       </div>
     );
   }
 
-  // Prend les 7 derniers jours
-  const last7Days = data.slice(-7);
-  const maxViews = Math.max(...last7Days.map(d => d.views), 1);
-  const totalViews = last7Days.reduce((sum, day) => sum + day.views, 0);
+  // Préparer les données pour Janvier-Décembre
+  const allMonths = Array.from({ length: 12 }, (_, i) => {
+    const monthNum = i + 1;
+    const found = data.find(d => d.month === monthNum);
+    return {
+      month: monthNum,
+      label: new Date(2024, i, 1).toLocaleDateString('fr-FR', { month: 'short' }),
+      views: found ? found.views : 0,
+      index: i // Keep track of index
+    };
+  });
 
-  console.log('📊 Données pour le graphique barres:', last7Days);
+  const maxViews = Math.max(...allMonths.map(m => m.views)) || 1;
+
+  const chartData = {
+    series: [{
+      data: allMonths.map(m => m.views)
+    }]
+  };
 
   return (
-    <div className="h-96">
-      {/* En-tête avec résumé */}
-      <div className="flex justify-between items-center mb-8 p-4 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-xl">
-        <div className="text-center">
-          <p className="text-sm text-gray-600">Période analysée</p>
-          <p className="font-bold text-indigo-700">7 jours</p>
+    <div className="w-full">
+      <div className="flex flex-col">
+        <div className="h-64 px-4 mb-4">
+          <Chart width={800} height={250} series={chartData.series} minY={0}>
+            <Layer width="90%" height="85%" position="middle center">
+              <Ticks
+                axis="y"
+                ticks={{ maxTicks: 6 }}
+                lineLength="100%"
+                lineStyle={{ stroke: '#e2e8f0', strokeWidth: 1, strokeDasharray: '4 2' }}
+                labelStyle={{ fill: '#64748b', fontSize: 11, fontFamily: 'Inter, sans-serif', textAnchor: 'end' }}
+                labelAttributes={{ dx: -10 }}
+              />
+              <Bars
+                innerPadding={15}
+                groupPadding={20}
+                barStyle={{
+                  fill: 'url(#monthlyGradient)',
+                  cursor: 'pointer',
+                  stroke: 'url(#monthlyBorder)',
+                  strokeWidth: 1
+                }}
+                barAttributes={({ pointIndex }: { pointIndex: number }) => ({
+                  onMouseOver: (e: any) => { 
+                    if (selectedIndex === null || selectedIndex === pointIndex) {
+                      e.target.style.opacity = '0.8'; 
+                      e.target.style.transform = 'scaleY(1.05)'; 
+                      e.target.style.transformOrigin = 'bottom';
+                    }
+                  },
+                  onMouseOut: (e: any) => { 
+                    if (selectedIndex === null || selectedIndex === pointIndex) {
+                      e.target.style.opacity = selectedIndex !== null && selectedIndex !== pointIndex ? '0.4' : '1';
+                      e.target.style.transform = 'scaleY(1)'; 
+                    }
+                  },
+                  onClick: () => setSelectedIndex(selectedIndex === pointIndex ? null : pointIndex),
+                  style: {
+                    opacity: selectedIndex !== null && selectedIndex !== pointIndex ? 0.4 : 1,
+                    transition: 'all 0.3s ease',
+                    transformOrigin: 'bottom'
+                  }
+                })}
+              />
+              <defs>
+                <linearGradient id="monthlyGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#0d9488" stopOpacity="0.9" />
+                  <stop offset="100%" stopColor="#115e59" stopOpacity="0.7" />
+                </linearGradient>
+                <linearGradient id="monthlyBorder" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#14b8a6" />
+                  <stop offset="100%" stopColor="#0f766e" />
+                </linearGradient>
+              </defs>
+              <Labels
+                label={({ pointIndex }) => {
+                  if (selectedIndex !== null && selectedIndex !== pointIndex) return '';
+                  const val = allMonths[pointIndex]?.views;
+                  return val > 0 || selectedIndex === pointIndex ? val?.toString() || '0' : '';
+                }}
+                labelAttributes={{ y: -15, fill: '#374151', fontSize: 12, fontWeight: 'bold', textAnchor: 'middle' }}
+              />
+            </Layer>
+          </Chart>
         </div>
-        <div className="text-center">
-          <p className="text-sm text-gray-600">Total des vues</p>
-          <p className="font-bold text-indigo-700">{totalViews} visites</p>
-        </div>
-        <div className="text-center">
-          <p className="text-sm text-gray-600">Moyenne quotidienne</p>
-          <p className="font-bold text-indigo-700">{Math.round(totalViews / 7)} vues/jour</p>
-        </div>
-      </div>
 
-      {/* Graphique */}
-      <div className="flex items-end justify-between gap-3 h-48 px-4">
-        {last7Days.map((day, index) => {
-          const heightPercentage = Math.max((day.views / maxViews) * 80, 8);
-          return (
-            <div key={index} className="flex flex-col items-center flex-1 group">
-              {/* Barre du graphique */}
-              <div className="relative w-full flex justify-center">
-                <div
-                  className="w-10/12 bg-gradient-to-t from-indigo-500 to-blue-400 rounded-t-xl transition-all duration-500 hover:from-indigo-600 hover:to-blue-500 cursor-pointer shadow-lg hover:shadow-xl"
-                  style={{ 
-                    height: `${heightPercentage}%`,
-                    minHeight: '20px'
-                  }}
+        {/* Légende horizontale */}
+        <div className="px-4">
+          <div className="flex justify-between items-start gap-1">
+            {allMonths.map((m, index) => {
+              const isPeak = m.views === maxViews && m.views > 0;
+              const isSelected = selectedIndex === index;
+              
+              return (
+                <div 
+                  key={index} 
+                  className="flex flex-col items-center flex-1 cursor-pointer group"
+                  onClick={() => setSelectedIndex(selectedIndex === index ? null : index)}
                 >
-                  {/* Tooltip au survol */}
-                  <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-sm py-2 px-3 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 shadow-2xl">
-                    <div className="font-bold">{day.views} vues</div>
-                    <div className="text-xs text-gray-300">
-                      {new Date(day.date).toLocaleDateString('fr-FR', { 
-                        weekday: 'long',
-                        day: 'numeric', 
-                        month: 'long' 
-                      })}
+                  <div className={`p-2 rounded-lg text-center w-full transition-all duration-300 ${
+                    isSelected 
+                      ? 'bg-teal-600 text-white shadow-lg scale-110 -translate-y-1'
+                      : isPeak 
+                        ? 'bg-teal-50 border border-teal-200' 
+                        : 'hover:bg-gray-50'
+                  } ${selectedIndex !== null && !isSelected ? 'opacity-40' : 'opacity-100'}`}>
+                    <div className={`text-xs font-medium uppercase ${isSelected ? 'text-white' : 'text-gray-600'}`}>
+                      {m.label}
                     </div>
-                    <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1 w-2 h-2 bg-gray-900 rotate-45"></div>
+                    {(isPeak || isSelected) && (
+                      <div className={`text-[10px] font-bold ${isSelected ? 'text-white/90' : 'text-teal-600'}`}>
+                        {m.views}
+                      </div>
+                    )}
                   </div>
                 </div>
-              </div>
-              
-              {/* Date en bas */}
-              <div className="text-xs text-gray-600 mt-3 text-center font-medium">
-                {new Date(day.date).toLocaleDateString('fr-FR', { 
-                  day: 'numeric', 
-                  month: 'short' 
-                })}
-              </div>
-              
-              {/* Valeur au-dessus de la barre */}
-              <div className="text-sm font-bold text-indigo-700 mt-1">
-                {day.views}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Légende et statistiques */}
-      <div className="flex justify-between items-center mt-8 px-4 pt-4 border-t border-gray-200">
-        <div className="text-xs text-gray-500">
-          Échelle: 0 à {maxViews} vues
-        </div>
-        <div className="flex gap-4 text-xs text-gray-500">
-          <span>Jour le plus bas: {Math.min(...last7Days.map(d => d.views))}</span>
-          <span>Jour le plus haut: {Math.max(...last7Days.map(d => d.views))}</span>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-// Composant pour le tableau des pages
-interface PageViewsTableProps {
+// Composant pour le graphique à barres avec Rumble Charts -
+interface ViewsBarChartProps {
+  data: Array<{ date: string; views: number }>;
+  loading: boolean;
+}
+
+function ViewsBarChart({ data, loading }: ViewsBarChartProps) {
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+
+  if (loading) {
+    return (
+      <div className="h-96 flex flex-col items-center justify-center bg-gradient-to-br from-[#ad5945]/5 to-[#d38074]/5 rounded-2xl">
+        <Loader className="animate-spin text-[#ad5945] mb-4" size={40} />
+        <p className="text-gray-700 font-semibold">Chargement du graphique...</p>
+        <p className="text-gray-500 text-sm mt-2">Analyse des vues quotidiennes</p>
+      </div>
+    );
+  }
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="h-96 flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-slate-50 rounded-2xl border-2 border-dashed border-gray-300">
+        <BarChart3 className="w-20 h-20 mb-4 text-gray-400" />
+        <p className="text-xl font-bold text-gray-600 mb-2">Aucune donnée disponible</p>
+        <p className="text-gray-500 text-center max-w-md">
+          Les statistiques de vues des derniers jours apparaîtront ici dès que vos visiteurs navigueront sur votre site.
+        </p>
+      </div>
+    );
+  }
+
+  // Préparer les données - trier par date croissante pour que l'ordre soit cohérent
+  const last7Days = [...data]
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .slice(-7);
+    
+  const totalViews = last7Days.reduce((sum, day) => sum + day.views, 0);
+  const maxViews = Math.max(...last7Days.map(day => day.views));
+
+  // Transformer les données pour Rumble Charts
+  const chartData = {
+    series: [{
+      data: last7Days.map(day => day.views)
+    }]
+  };
+
+  return (
+    <div className="w-full">
+      {/* En-tête avec résumé amélioré */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 p-6 bg-gradient-to-r from-[#ad5945]/5 via-[#d38074]/5 to-[#ca715b]/5 rounded-2xl border border-[#ad5945]/20">
+        <div className="text-center p-4 bg-white rounded-xl shadow-sm border border-[#ad5945]/10">
+          <p className="text-sm text-gray-600 font-medium mb-1 font-inter">Période analysée</p>
+          <p className="text-lg font-bold text-[#ad5945] font-playfair">7 jours</p>
+        </div>
+        <div className="text-center p-4 bg-white rounded-xl shadow-sm border border-[#ad5945]/10">
+          <p className="text-sm text-gray-600 font-medium mb-1 font-inter">Total des vues</p>
+          <p className="text-lg font-bold text-[#ad5945] font-playfair">{totalViews.toLocaleString()} visites</p>
+        </div>
+        <div className="text-center p-4 bg-white rounded-xl shadow-sm border border-[#ad5945]/10">
+          <p className="text-sm text-gray-600 font-medium mb-1 font-inter">Moyenne quotidienne</p>
+          <p className="text-lg font-bold text-[#ad5945] font-playfair">{Math.round(totalViews / 7).toLocaleString()} vues/jour</p>
+        </div>
+      </div>
+
+      {/* Conteneur principal du graphique */}
+      <div className="flex flex-col">
+        {/* Graphique Rumble Charts */}
+        <div className="h-64 px-4 mb-4">
+          <Chart 
+            width={800} 
+            height={250} 
+            series={chartData.series}
+            minY={0}
+          >
+            <Layer width="90%" height="85%" position="middle center">
+              {/* Grille de fond */}
+              <Ticks 
+                axis="y"
+                ticks={{ maxTicks: 6 }}
+                lineLength="100%"
+                lineStyle={{ 
+                  stroke: '#e2e8f0', 
+                  strokeWidth: 1,
+                  strokeDasharray: '4 2'
+                }}
+                labelStyle={{
+                  fill: '#64748b',
+                  fontSize: 11,
+                  fontWeight: '600',
+                  textAnchor: 'end',
+                  fontFamily: 'Inter, sans-serif'
+                }}
+                labelAttributes={{ dx: -10 }}
+              />
+              
+              {/* Barres avec effet de brillance */}
+              <Bars
+                innerPadding={15}
+                groupPadding={20}
+                barStyle={{
+                  fill: 'url(#barGradient)',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  stroke: 'url(#barBorder)',
+                  strokeWidth: 1
+                }}
+                barAttributes={({ pointIndex }: { pointIndex: number }) => ({
+                  onMouseOver: (e: any) => {
+                    if (selectedIndex === null || selectedIndex === pointIndex) {
+                      e.target.style.opacity = '0.8';
+                      e.target.style.transform = 'scaleY(1.05)';
+                      e.target.style.transformOrigin = 'bottom';
+                    }
+                  },
+                  onMouseOut: (e: any) => {
+                    if (selectedIndex === null || selectedIndex === pointIndex) {
+                      e.target.style.opacity = selectedIndex !== null && selectedIndex !== pointIndex ? '0.4' : '1';
+                      e.target.style.transform = 'scaleY(1)';
+                    }
+                  },
+                  onClick: () => setSelectedIndex(selectedIndex === pointIndex ? null : pointIndex),
+                  style: {
+                    opacity: selectedIndex !== null && selectedIndex !== pointIndex ? 0.4 : 1,
+                    transition: 'all 0.3s ease',
+                    transformOrigin: 'bottom'
+                  }
+                })}
+              />
+              
+              {/* Définition des gradients */}
+              <defs>
+                <linearGradient id="barGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#ad5945" stopOpacity="0.9" />
+                  <stop offset="50%" stopColor="#d38074" stopOpacity="0.8" />
+                  <stop offset="100%" stopColor="#ca715b" stopOpacity="0.7" />
+                </linearGradient>
+                <linearGradient id="barBorder" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#d38074" />
+                  <stop offset="100%" stopColor="#ad5945" />
+                </linearGradient>
+              </defs>
+
+              {/* Étiquettes de valeurs au-dessus des barres */}
+              <Labels
+                label={({ seriesIndex, pointIndex, y }) => {
+                  if (selectedIndex !== null && selectedIndex !== pointIndex) return '';
+                  const value = last7Days[pointIndex]?.views;
+                  return value > 0 || selectedIndex === pointIndex ? value?.toString() || '0' : '';
+                }}
+                labelAttributes={{
+                  y: -15,
+                  fill: '#374151',
+                  fontSize: 12,
+                  fontWeight: 'bold',
+                  textAnchor: 'middle',
+                  fontFamily: 'Inter, sans-serif'
+                }}
+              />
+            </Layer>
+          </Chart>
+        </div>
+
+        {/* Légende horizontale PARFAITEMENT alignée */}
+        <div className="px-4">
+          <div className="flex justify-between items-start" style={{ 
+            marginLeft: '5%', 
+            marginRight: '5%',
+            gap: '2%'
+          }}>
+            {last7Days.map((day, index) => {
+              const isPeak = day.views === maxViews;
+              const isSelected = selectedIndex === index;
+              const barWidth = 88 / last7Days.length; // Ajusté pour mieux s'aligner
+              
+              return (
+                <div 
+                  key={index} 
+                  className="flex flex-col items-center transition-all duration-300 cursor-pointer"
+                  style={{ width: `${barWidth}%` }}
+                  onClick={() => setSelectedIndex(selectedIndex === index ? null : index)}
+                >
+                  {/* Carte de légende compacte */}
+                  <div 
+                    className={`p-3 rounded-xl text-center w-full min-w-0 transition-all duration-300 ${
+                      isSelected 
+                        ? 'bg-gradient-to-br from-[#ad5945] to-[#d38074] text-white shadow-lg scale-110 -translate-y-2'
+                        : isPeak 
+                          ? 'bg-gradient-to-br from-[#ad5945]/10 to-[#d38074]/10 border-2 border-[#ad5945]/30 shadow-md' 
+                          : 'bg-gray-50 hover:bg-gray-100 border border-gray-200'
+                    } ${selectedIndex !== null && !isSelected ? 'opacity-40' : 'opacity-100'}`}
+                  >
+                    {/* Nom du jour */}
+                    <div className={`text-xs font-medium mb-1 font-inter uppercase ${isSelected ? 'text-white' : 'text-gray-600'}`}>
+                      {new Date(day.date).toLocaleDateString('fr-FR', { 
+                        weekday: 'short'
+                      })}
+                    </div>
+                    
+                    {/* Date complète */}
+                    <div className={`text-[10px] mb-1 font-inter ${isSelected ? 'text-white/80' : 'text-gray-500'}`}>
+                      {new Date(day.date).toLocaleDateString('fr-FR', { 
+                        day: 'numeric', 
+                        month: 'short' 
+                      })}
+                    </div>
+                    
+                    {/* Nombre de vues */}
+                    <div className={`text-sm font-bold font-playfair ${
+                      isSelected ? 'text-white' : isPeak ? 'text-[#ad5945]' : 'text-gray-700'
+                    }`}>
+                      {day.views.toLocaleString()}
+                    </div>
+                    
+                    {/* Indicateur de pic ou sélection */}
+                    {(isPeak || isSelected) && (
+                      <div className={`text-[10px] px-1 py-0.5 rounded-full font-bold mt-1 font-inter ${
+                        isSelected ? 'bg-white text-[#ad5945]' : 'bg-gradient-to-r from-[#ad5945] to-[#d38074] text-white'
+                      }`}>
+                        {isSelected ? 'Vues' : 'PIC'}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Composant pour le graphique des pages avec Rumble Charts
+interface PageViewsChartProps {
   data: Array<{ page_name: string; views: number }>;
   loading: boolean;
 }
 
-function PageViewsTable({ data, loading }: PageViewsTableProps) {
+function PageViewsChart({ data, loading }: PageViewsChartProps) {
   if (loading) {
     return (
       <div className="h-64 flex items-center justify-center">
@@ -583,37 +860,134 @@ function PageViewsTable({ data, loading }: PageViewsTableProps) {
     );
   }
 
-  // Trie par nombre de vues décroissant
-  const sortedData = [...data].sort((a, b) => b.views - a.views);
+  const sortedData = [...data].sort((a, b) => b.views - a.views).slice(0, 5);
+  const maxViews = Math.max(...sortedData.map(page => page.views));
+
+  const chartData = {
+    series: [{
+      data: sortedData.map(page => page.views)
+    }]
+  };
 
   return (
-    <div className="space-y-3 max-h-96 overflow-y-auto">
-      {sortedData.map((page, index) => (
-        <div
-          key={index}
-          className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-100 hover:border-purple-300 transition-all duration-300 group hover:shadow-md"
-        >
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform flex-shrink-0">
-              <div className="w-6 h-6 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                {index + 1}
+    <div className="w-full">
+      <Chart 
+        width={500} 
+        height={280} 
+        series={chartData.series}
+        minY={0}
+      >
+        <Transform method={['transpose']}>
+          <Layer width="85%" height="80%">
+            {/* Grille de fond */}
+            <Ticks 
+              axis="y"
+              ticks={{ maxTicks: 5 }}
+              lineLength="100%"
+              lineStyle={{ 
+                stroke: '#f1f5f9', 
+                strokeWidth: 1
+              }}
+            />
+            
+            {/* Barres horizontales avec gradient */}
+            <Bars
+              innerPadding={20}
+              barStyle={{
+                fill: 'url(#pageGradient)',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                rx: 8
+              }}
+              barAttributes={{
+                onMouseOver: (e: any) => {
+                  e.target.style.opacity = '0.8';
+                  e.target.style.transform = 'scale(1.02)';
+                },
+                onMouseOut: (e: any) => {
+                  e.target.style.opacity = '1';
+                  e.target.style.transform = 'scale(1)';
+                }
+              }}
+            />
+            
+            {/* Définition des gradients */}
+            <defs>
+              <linearGradient id="pageGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#a855f7" />
+                <stop offset="50%" stopColor="#c084fc" />
+                <stop offset="100%" stopColor="#ec4899" />
+              </linearGradient>
+            </defs>
+
+            {/* Étiquettes des valeurs */}
+            <Labels
+              label={({ seriesIndex, pointIndex, x }) => {
+                const value = sortedData[pointIndex]?.views;
+                return value > 0 ? value.toString() : '';
+              }}
+              labelAttributes={{
+                x: 10,
+                fill: '#ffffff',
+                fontSize: 11,
+                fontWeight: 'bold',
+                textAnchor: 'start'
+              }}
+            />
+
+            {/* Étiquettes des noms de pages */}
+            <Labels
+              label={({ seriesIndex, pointIndex }) => {
+                return sortedData[pointIndex]?.page_name || '';
+              }}
+              labelAttributes={{
+                x: -10,
+                fill: '#374151',
+                fontSize: 12,
+                fontWeight: '600',
+                textAnchor: 'end'
+              }}
+            />
+          </Layer>
+        </Transform>
+      </Chart>
+
+      {/* Légende détaillée */}
+      <div className="mt-6 space-y-3">
+        {sortedData.map((page, index) => {
+          const percentage = maxViews > 0 ? (page.views / maxViews) * 100 : 0;
+          
+          return (
+            <div 
+              key={index} 
+              className="flex items-center justify-between p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-100 hover:border-purple-300 transition-all duration-300 group"
+            >
+              <div className="flex items-center gap-3 flex-1">
+                <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                  {index + 1}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="text-gray-800 font-semibold block capitalize text-sm">
+                    {page.page_name}
+                  </span>
+                  <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
+                    <div 
+                      className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all duration-500"
+                      style={{ width: `${percentage}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+              <div className="text-right flex-shrink-0 ml-4">
+                <span className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 block">
+                  {page.views.toLocaleString()}
+                </span>
+                <p className="text-xs text-gray-600">{Math.round(percentage)}% du max</p>
               </div>
             </div>
-            <div className="min-w-0 flex-1">
-              <span className="font-semibold text-gray-800 capitalize block truncate">
-                {page.page_name}
-              </span>
-              <p className="text-sm text-gray-600">Page visitée</p>
-            </div>
-          </div>
-          <div className="text-right flex-shrink-0 ml-4">
-            <span className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 block">
-              {page.views}
-            </span>
-            <p className="text-sm text-gray-600">vues</p>
-          </div>
-        </div>
-      ))}
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -643,7 +1017,6 @@ function RecentViews({ data, loading }: RecentViewsProps) {
     );
   }
 
-  // Trie par date décroissante
   const sortedData = [...data].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return (
@@ -680,7 +1053,7 @@ function RecentViews({ data, loading }: RecentViewsProps) {
   );
 }
 
-// Composants StatCard et QuickActionButton restent inchangés...
+// Composants StatCard et QuickActionButton
 interface StatCardProps {
   label: string;
   value: number;
