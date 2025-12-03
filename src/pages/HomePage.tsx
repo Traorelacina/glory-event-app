@@ -710,7 +710,8 @@ export default function HomePage({ onNavigate }: HomePageProps) {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-10">
+          {/* Desktop Grid */}
+          <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-10">
             {features.map((feature, index) => (
               <div
                 key={index}
@@ -749,6 +750,42 @@ export default function HomePage({ onNavigate }: HomePageProps) {
                 </p>
               </div>
             ))}
+          </div>
+
+          {/* Mobile Carousel */}
+          <div className="md:hidden">
+            <Swiper
+              modules={[Autoplay]}
+              spaceBetween={16}
+              slidesPerView={1.2}
+              centeredSlides={true}
+              loop
+              autoplay={{
+                delay: 3000,
+                disableOnInteraction: false,
+              }}
+              className="pb-8"
+            >
+              {features.map((feature, index) => (
+                <SwiperSlide key={index}>
+                  <div className="text-center group p-6 rounded-3xl bg-white shadow-lg border border-gray-100">
+                    <div className="w-16 h-16 bg-gradient-to-br from-[#ad5945]/10 to-[#d38074]/10 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-md">
+                      <img 
+                        src={feature.icon} 
+                        alt={feature.title}
+                        className="w-10 h-10"
+                      />
+                    </div>
+                    <h3 className="font-playfair text-xl font-semibold text-gray-900 mb-3 tracking-tight">
+                      {feature.title}
+                    </h3>
+                    <p className="font-inter text-gray-600 leading-relaxed font-light text-sm">
+                      {feature.description}
+                    </p>
+                  </div>
+                </SwiperSlide>
+              ))}
+            </Swiper>
           </div>
         </div>
       </section>
@@ -806,7 +843,8 @@ export default function HomePage({ onNavigate }: HomePageProps) {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
+          {/* Desktop Grid */}
+          <div className="hidden md:grid md:grid-cols-2 gap-8">
             {detailedServices.map((service, index) => (
               <div
                 key={index}
@@ -853,6 +891,51 @@ export default function HomePage({ onNavigate }: HomePageProps) {
                 <div className={`absolute inset-0 rounded-3xl bg-gradient-to-br ${service.color} opacity-0 group-hover:opacity-10 transition-opacity duration-300`}></div>
               </div>
             ))}
+          </div>
+
+          {/* Mobile Carousel */}
+          <div className="md:hidden">
+            <Swiper
+              modules={[Autoplay]}
+              spaceBetween={16}
+              slidesPerView={1.1}
+              centeredSlides={true}
+              loop
+              autoplay={{
+                delay: 3500,
+                disableOnInteraction: false,
+              }}
+              className="pb-8"
+            >
+              {detailedServices.map((service, index) => (
+                <SwiperSlide key={index}>
+                  <div
+                    className="group relative bg-white/10 backdrop-blur-md rounded-3xl p-6 border border-white/20 cursor-pointer overflow-hidden"
+                    onClick={() => onNavigate('services')}
+                  >
+                    <div className={`relative w-16 h-16 rounded-2xl bg-white flex items-center justify-center mb-4 shadow-lg`}>
+                      <img 
+                        src={service.icon} 
+                        alt={service.title}
+                        className="w-10 h-10"
+                      />
+                    </div>
+
+                    <h3 className="font-playfair text-xl font-semibold text-white mb-3 tracking-tight">
+                      {service.title}
+                    </h3>
+                    <p className="font-inter text-gray-300 leading-relaxed mb-4 font-light text-sm">
+                      {service.description}
+                    </p>
+
+                    <div className="flex items-center text-[#d38074] font-inter font-medium text-sm tracking-wide">
+                      <span className="mr-2">En savoir plus</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </div>
+                  </div>
+                </SwiperSlide>
+              ))}
+            </Swiper>
           </div>
 
           <div 
@@ -910,7 +993,8 @@ export default function HomePage({ onNavigate }: HomePageProps) {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+          {/* Desktop Grid */}
+          <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             {services.map((service, index) => (
               <div
                 key={index}
@@ -947,7 +1031,6 @@ export default function HomePage({ onNavigate }: HomePageProps) {
                     </div>
                   </div>
 
-                  {/* Effet de bordure lumineuse */}
                   <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#ad5945] to-transparent"></div>
                     <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#d38074] to-transparent"></div>
@@ -966,13 +1049,58 @@ export default function HomePage({ onNavigate }: HomePageProps) {
                   </div>
                 </div>
 
-                {/* Particule décorative */}
                 <div 
                   className="absolute top-4 right-4 w-3 h-3 bg-white/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"
                   style={{ animation: isHovering === `portfolio-${index}` ? 'pulse 2s ease-in-out infinite' : 'none' }}
                 ></div>
               </div>
             ))}
+          </div>
+
+          {/* Mobile Carousel */}
+          <div className="md:hidden">
+            <Swiper
+              modules={[Autoplay]}
+              spaceBetween={16}
+              slidesPerView={1.2}
+              centeredSlides={true}
+              loop
+              autoplay={{
+                delay: 4000,
+                disableOnInteraction: false,
+              }}
+              className="pb-8"
+            >
+              {services.map((service, index) => (
+                <SwiperSlide key={index}>
+                  <div
+                    className="group relative rounded-3xl overflow-hidden shadow-lg cursor-pointer"
+                    onClick={() => onNavigate('services')}
+                  > 
+                    <div className="relative overflow-hidden">
+                      <img
+                        src={service.img}
+                        alt={service.title}
+                        className="w-full h-48 object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                    </div>
+                    
+                    <div className="p-6 bg-white">
+                      <h3 className="font-playfair text-lg font-semibold mb-2 tracking-tight">
+                        {service.title}
+                      </h3>
+                      <p className="font-inter text-gray-600 text-sm font-light">{service.description}</p>
+                      
+                      <div className="flex items-center text-[#ad5945] font-inter font-medium text-sm mt-3 tracking-wide">
+                        <span className="mr-2">Découvrir</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </div>
+                    </div>
+                  </div>
+                </SwiperSlide>
+              ))}
+            </Swiper>
           </div>
         </div>
       </section>
@@ -1163,3 +1291,4 @@ export default function HomePage({ onNavigate }: HomePageProps) {
     </div>
   );
 }
+
