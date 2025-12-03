@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Mail, Phone, MapPin, Send, Loader, AlertCircle } from 'lucide-react';
 import Footer from '../components/Footer';
 
@@ -22,6 +22,18 @@ export default function ContactPage({ selectedService, onNavigate }: ContactPage
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const formRef = useRef<HTMLDivElement>(null);
+
+  // Effet pour gérer le selectedService initial
+  useEffect(() => {
+    if (selectedService) {
+      setFormData(prev => ({
+        ...prev,
+        subject: selectedService,
+        service: selectedService
+      }));
+    }
+  }, [selectedService]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,6 +91,14 @@ export default function ContactPage({ selectedService, onNavigate }: ContactPage
     }
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
   const services = [
     'Mariages de Luxe',
     'Événements Corporate',
@@ -113,12 +133,12 @@ export default function ContactPage({ selectedService, onNavigate }: ContactPage
           <div className="grid lg:grid-cols-2 gap-12">
             {/* Informations de Contact */}
             <div>
-              <div className="bg-gradient-to-br from-[#ad5945] to-[#d38074] rounded-3xl p-8 md:p-12 text-white mb-8 shadow-xl">
-                <h2 className="font-serif text-3xl font-bold mb-8">
+              <div className="bg-gradient-to-br from-[#ad5945] to-[#d38074] rounded-3xl p-8 md:p-12 text-white mb-8 shadow-xl relative overflow-hidden">
+                <h2 className="font-serif text-3xl font-bold mb-8 relative z-10">
                   Informations de Contact
                 </h2>
 
-                <div className="space-y-6">
+                <div className="space-y-6 relative z-10">
                   <div className="flex items-start gap-4 group">
                     <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
                       <Phone className="w-6 h-6" />
@@ -213,16 +233,17 @@ export default function ContactPage({ selectedService, onNavigate }: ContactPage
                     </div>
                   )}
 
-                  <form onSubmit={handleSubmit} className="space-y-6">
+                  <form onSubmit={handleSubmit} className="space-y-6" ref={formRef}>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Nom complet *
                       </label>
                       <input
                         type="text"
+                        name="name"
                         required
                         value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        onChange={handleInputChange}
                         className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#ad5945] focus:border-transparent outline-none transition-all hover:border-gray-400"
                         placeholder="Jean Dupont"
                         disabled={isSubmitting}
@@ -235,9 +256,10 @@ export default function ContactPage({ selectedService, onNavigate }: ContactPage
                       </label>
                       <input
                         type="email"
+                        name="email"
                         required
                         value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        onChange={handleInputChange}
                         className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#ad5945] focus:border-transparent outline-none transition-all hover:border-gray-400"
                         placeholder="jean.dupont@example.com"
                         disabled={isSubmitting}
@@ -250,8 +272,9 @@ export default function ContactPage({ selectedService, onNavigate }: ContactPage
                       </label>
                       <input
                         type="tel"
+                        name="phone"
                         value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        onChange={handleInputChange}
                         className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#ad5945] focus:border-transparent outline-none transition-all hover:border-gray-400"
                         placeholder="+33 1 23 45 67 89"
                         disabled={isSubmitting}
@@ -263,10 +286,18 @@ export default function ContactPage({ selectedService, onNavigate }: ContactPage
                         Service souhaité *
                       </label>
                       <select
+                        name="subject"
                         required
                         value={formData.subject}
-                        onChange={(e) => setFormData({ ...formData, subject: e.target.value, service: e.target.value })}
-                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#ad5945] focus:border-transparent outline-none transition-all hover:border-gray-400"
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setFormData(prev => ({
+                            ...prev,
+                            subject: value,
+                            service: value
+                          }));
+                        }}
+                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#ad5945] focus:border-transparent outline-none transition-all hover:border-gray-400 appearance-none bg-white"
                         disabled={isSubmitting}
                       >
                         <option value="">Sélectionnez un service</option>
@@ -283,9 +314,10 @@ export default function ContactPage({ selectedService, onNavigate }: ContactPage
                         Votre message *
                       </label>
                       <textarea
+                        name="message"
                         required
                         value={formData.message}
-                        onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                        onChange={handleInputChange}
                         rows={5}
                         className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#ad5945] focus:border-transparent outline-none transition-all resize-none hover:border-gray-400"
                         placeholder="Décrivez votre projet..."
@@ -296,7 +328,7 @@ export default function ContactPage({ selectedService, onNavigate }: ContactPage
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="w-full bg-gradient-to-r from-[#ad5945] to-[#d38074] text-white py-4 rounded-full font-medium text-lg hover:shadow-xl transform hover:-translate-y-1 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-[#ad5945]/30"
+                      className="w-full bg-gradient-to-r from-[#ad5945] to-[#d38074] text-white py-4 rounded-full font-medium text-lg hover:shadow-xl transform hover:-translate-y-1 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-[#ad5945]/30 disabled:hover:transform-none"
                     >
                       {isSubmitting ? (
                         <>
