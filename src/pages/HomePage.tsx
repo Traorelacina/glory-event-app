@@ -285,7 +285,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
     <div className="min-h-screen font-playfair text-[#111827] overflow-x-hidden">
       {/* Import des polices et animations CSS */}
       <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Serif+Display:ital@0;1&family=Raleway:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap');
         
         @keyframes float {
           0%, 100% { 
@@ -391,16 +391,108 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           }
         }
 
+        @keyframes glow {
+          0%, 100% {
+            box-shadow: 0 0 20px rgba(173, 89, 69, 0.3), inset 0 0 20px rgba(173, 89, 69, 0.1);
+          }
+          50% {
+            box-shadow: 0 0 40px rgba(211, 128, 116, 0.5), inset 0 0 20px rgba(173, 89, 69, 0.2);
+          }
+        }
+
+        @keyframes slideUp {
+          from {
+            opacity: 0;
+            transform: translateY(60px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-60px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes scaleUp {
+          from {
+            opacity: 0;
+            transform: scale(0.8) rotateX(-10deg);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1) rotateX(0deg);
+          }
+        }
+
+        @keyframes wiggle {
+          0%, 100% {
+            transform: rotate(0deg);
+          }
+          25% {
+            transform: rotate(1deg);
+          }
+          75% {
+            transform: rotate(-1deg);
+          }
+        }
+
+        @keyframes blinkGlow {
+          0%, 100% {
+            background-color: rgba(173, 89, 69, 0.2);
+            box-shadow: 0 0 20px rgba(173, 89, 69, 0.3);
+          }
+          50% {
+            background-color: rgba(211, 128, 116, 0.3);
+            box-shadow: 0 0 30px rgba(211, 128, 116, 0.5);
+          }
+        }
+
+        @keyframes textGlow {
+          0%, 100% {
+            text-shadow: 0 0 10px rgba(173, 89, 69, 0.3);
+          }
+          50% {
+            text-shadow: 0 0 20px rgba(211, 128, 116, 0.6), 0 0 30px rgba(173, 89, 69, 0.4);
+          }
+        }
+
         .font-playfair {
           font-family: 'Playfair Display', serif;
+          letter-spacing: -0.5px;
+        }
+
+        .font-dm-serif {
+          font-family: 'DM Serif Display', serif;
+          letter-spacing: -0.3px;
+        }
+
+        .font-raleway {
+          font-family: 'Raleway', sans-serif;
+          letter-spacing: 0.3px;
+        }
+
+        .font-lora {
+          font-family: 'Lora', serif;
+          letter-spacing: 0.2px;
         }
 
         .font-inter {
-          font-family: 'Inter', sans-serif;
+          font-family: 'Raleway', sans-serif;
+          letter-spacing: 0.3px;
         }
 
         .font-cormorant {
-          font-family: 'Cormorant Garamond', serif;
+          font-family: 'Lora', serif;
+          letter-spacing: 0.2px;
         }
 
         .text-shadow-gentle {
@@ -444,6 +536,14 @@ export default function HomePage({ onNavigate }: HomePageProps) {
         .parallax-layer {
           transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
+
+        .glowing-badge {
+          animation: blinkGlow 3s ease-in-out infinite;
+        }
+
+        .text-glow {
+          animation: textGlow 3s ease-in-out infinite;
+        }
       `}</style>
 
       {/* Section Hero avec Slider */}
@@ -457,7 +557,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
               backgroundImage: `url(${slide.image})`,
               opacity: currentSlide === index ? 1 : 0,
               transform: currentSlide === index 
-                ? `translateY(${scrollY * 0.5}px) scale(1.05)` 
+                ? `translateY(${scrollY * 0.5}px) scale(1.1)` 
                 : `translateY(${scrollY * 0.5}px) scale(1)`,
               zIndex: currentSlide === index ? 1 : 0
             }}
@@ -499,88 +599,66 @@ export default function HomePage({ onNavigate }: HomePageProps) {
             className="inline-block mb-6 overflow-hidden"
             style={{ animation: 'fadeInUp 0.8s ease-out' }}
           >
-            <div className="bg-white/10 backdrop-blur-md px-6 py-3 rounded-full border border-white/30">
-              <span className="font-inter text-sm font-semibold uppercase tracking-widest">
-                Excellence & Élégance
-              </span>
-            </div>
+            <span className="inline-block bg-white/20 backdrop-blur-md px-6 py-3 rounded-full font-raleway text-sm font-semibold uppercase tracking-widest border border-white/30 shimmer-effect glowing-badge">
+              Événementiel de Luxe
+            </span>
           </div>
 
           <h1 
-            className="font-cormorant text-5xl md:text-7xl lg:text-6xl font-light mb-8 tracking-tight text-shadow-elegant parallax-layer"
-            style={{ 
-              animation: 'fadeInUp 1s ease-out 0.2s both',
-              transform: `translateY(${mousePosition.y * -5}px)`
-            }}
+            className="font-playfair text-4xl md:text-6xl font-bold mb-6 leading-tight text-glow"
+            style={{ animation: 'slideDown 1s ease-out 0.2s both' }}
           >
             {heroSlides[currentSlide].title}
           </h1>
-
+          
           <p 
-            className="font-inter text-xl md:text-2xl lg:text-3xl mb-12 text-gray-200 max-w-4xl mx-auto leading-relaxed font-light tracking-wide parallax-layer"
-            style={{ 
-              animation: 'fadeInUp 1s ease-out 0.4s both',
-              transform: `translateY(${mousePosition.y * -3}px)`
-            }}
+            className="font-lora text-xl md:text-3xl mb-12 text-white/90 font-light max-w-3xl mx-auto leading-relaxed italic"
+            style={{ animation: 'slideUp 1s ease-out 0.4s both' }}
           >
             {heroSlides[currentSlide].subtitle}
           </p>
 
           <div 
-            className="flex flex-col sm:flex-row gap-6 justify-center items-center"
+            className="flex flex-col sm:flex-row gap-6 justify-center"
             style={{ animation: 'fadeInUp 1s ease-out 0.6s both' }}
           >
-            <button 
-              onClick={() => onNavigate('contact')} 
-              className="group relative bg-gradient-to-r from-[#ad5945] to-[#d38074] text-white px-10 py-5 rounded-full font-inter font-semibold text-lg hover:shadow-2xl transform hover:-translate-y-2 hover:scale-105 transition-all duration-300 flex items-center gap-3 overflow-hidden magnetic-button"
+            <button
+              onClick={() => onNavigate('services')}
+              className="group relative bg-gradient-to-r from-[#ad5945] to-[#d38074] text-white px-10 py-4 rounded-full font-inter font-semibold text-lg hover:shadow-2xl hover:shadow-[#ad5945]/50 transform hover:-translate-y-2 hover:scale-110 transition-all duration-300 overflow-hidden magnetic-button"
               onMouseEnter={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect();
                 const x = e.clientX - rect.left - rect.width / 2;
                 const y = e.clientY - rect.top - rect.height / 2;
-                e.currentTarget.style.transform = `translate(${x * 0.1}px, ${y * 0.1}px) translateY(-8px) scale(1.05)`;
+                e.currentTarget.style.transform = `translate(${x * 0.15}px, ${y * 0.15}px) translateY(-8px) scale(1.1)`;
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.transform = '';
               }}
             >
-              <span className="absolute inset-0 bg-gradient-to-r from-[#d38074] to-[#ca715b] translate-y-full group-hover:translate-y-0 transition-transform duration-300"></span>
-              <span className="relative z-10 tracking-wide">{heroSlides[currentSlide].cta1}</span>
-              <ArrowRight className="relative z-10 w-5 h-5 group-hover:translate-x-2 transition-transform" />
+              <span className="absolute inset-0 bg-gradient-to-r from-[#d38074] to-[#ca715b] translate-x-full group-hover:translate-x-0 transition-transform duration-300"></span>
+              <span className="relative z-10">{heroSlides[currentSlide].cta1}</span>
             </button>
-
-            <button 
-              onClick={() => onNavigate('gallery')} 
-              className="group relative bg-white/10 backdrop-blur-sm text-white px-10 py-5 rounded-full font-inter font-semibold text-lg hover:bg-white/20 transition-all duration-300 border border-white/30 flex items-center gap-3 overflow-hidden hover:-translate-y-2 hover:scale-105 magnetic-button"
-              onMouseEnter={(e) => {
-                const rect = e.currentTarget.getBoundingClientRect();
-                const x = e.clientX - rect.left - rect.width / 2;
-                const y = e.clientY - rect.top - rect.height / 2;
-                e.currentTarget.style.transform = `translate(${x * 0.1}px, ${y * 0.1}px) translateY(-8px) scale(1.05)`;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = '';
-              }}
+            <button
+              onClick={() => onNavigate('services')}
+              className="group px-10 py-4 rounded-full font-inter font-semibold text-lg border-2 border-white text-white hover:bg-white hover:text-[#ad5945] transition-all duration-300 transform hover:-translate-y-2 hover:scale-110"
             >
-              <span className="relative z-10 tracking-wide">{heroSlides[currentSlide].cta2}</span>
-              <ArrowRight className="relative z-10 w-5 h-5 group-hover:translate-x-2 transition-transform" />
+              {heroSlides[currentSlide].cta2}
             </button>
           </div>
-        </div>
 
-        {/* Indicateurs de slides */}
-        <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 z-10 flex gap-3">
-          {heroSlides.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => setCurrentSlide(index)}
-              className={`transition-all duration-300 rounded-full ${
-                currentSlide === index 
-                  ? 'w-12 h-2 bg-white' 
-                  : 'w-2 h-2 bg-white/50 hover:bg-white/70'
-              }`}
-              aria-label={`Slide ${index + 1}`}
-            />
-          ))}
+          {/* Indicateurs de slide */}
+          <div className="flex justify-center gap-3 mt-16">
+            {heroSlides.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentSlide(index)}
+                className={`h-2 rounded-full transition-all duration-500 ${
+                  currentSlide === index ? 'bg-white w-8' : 'bg-white/50 w-2 hover:bg-white/75'
+                }`}
+                style={{ animation: 'scaleIn 0.5s ease-out' }}
+              />
+            ))}
+          </div>
         </div>
 
         {/* Scroll indicator */}
@@ -618,16 +696,16 @@ export default function HomePage({ onNavigate }: HomePageProps) {
               transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
             }}
           >
-            <span className="inline-block bg-gradient-to-r from-[#ad5945] to-[#d38074] text-white px-6 py-3 rounded-full font-inter text-sm font-semibold uppercase tracking-widest mb-6 shimmer-effect">
+            <span className="inline-block bg-gradient-to-r from-[#ad5945] to-[#d38074] text-white px-6 py-3 rounded-full font-raleway text-sm font-semibold uppercase tracking-widest mb-6 shimmer-effect glowing-badge">
               Notre Engagement
             </span>
-            <h2 className="font-cormorant text-5xl md:text-6xl font-light text-gray-900 mb-8 tracking-tight">
+            <h2 className="font-dm-serif text-5xl md:text-6xl font-normal text-gray-900 mb-8 tracking-tight text-glow">
               L'Excellence dans
               <span className="block font-playfair italic text-5xl md:text-6xl text-[#ad5945] mt-2">
                 Chaque Détail
               </span>
             </h2>
-            <p className="font-inter text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed font-light">
+            <p className="font-lora text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed font-light italic">
               Nous combinons créativité, professionnalisme et expertise pour donner vie à vos projets les plus ambitieux
             </p>
           </div>
@@ -638,7 +716,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
                 key={index}
                 id={`feature-${index}`}
                 data-animate
-                className="text-center group p-8 rounded-3xl hover:bg-gradient-to-br hover:from-[#ad5945]/5 hover:to-[#d38074]/5 transition-all duration-500 cursor-default border border-transparent hover:border-[#ad5945]/10 card-tilt"
+                className="text-center group p-8 rounded-3xl hover:bg-gradient-to-br hover:from-[#ad5945]/5 hover:to-[#d38074]/5 transition-all duration-500 cursor-default border border-transparent hover:border-[#ad5945]/20 card-tilt"
                 style={{
                   opacity: isVisible[`feature-${index}`] ? 1 : 0,
                   transform: isVisible[`feature-${index}`] ? 'translateY(0) rotateX(0deg)' : 'translateY(30px) rotateX(-10deg)',
@@ -654,12 +732,13 @@ export default function HomePage({ onNavigate }: HomePageProps) {
                   e.currentTarget.style.transform = '';
                 }}
               >
-                <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center mx-auto mb-8 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 shadow-lg border border-gray-200 relative overflow-hidden">
+                <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center mx-auto mb-8 group-hover:scale-125 group-hover:rotate-12 transition-all duration-500 shadow-lg border border-gray-200 relative overflow-hidden group-hover:shadow-xl group-hover:shadow-[#ad5945]/30">
                   <div className="absolute inset-0 bg-gradient-to-br from-[#ad5945]/10 to-[#d38074]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   <img 
                     src={feature.icon} 
                     alt={feature.title}
-                    className="w-12 h-12 relative z-10 group-hover:scale-110 transition-transform duration-300"
+                    className="w-12 h-12 relative z-10 group-hover:scale-125 group-hover:rotate-12 transition-transform duration-500"
+                    style={{ animation: 'wiggle 3s ease-in-out infinite' }}
                   />
                 </div>
                 <h3 className="font-playfair text-2xl font-semibold text-gray-900 mb-4 tracking-tight group-hover:text-[#ad5945] transition-colors duration-300">
@@ -713,10 +792,10 @@ export default function HomePage({ onNavigate }: HomePageProps) {
               transition: 'all 0.8s ease-out',
             }}
           >
-            <span className="inline-block bg-gradient-to-r from-[#ad5945] to-[#d38074] text-white px-6 py-3 rounded-full font-inter text-sm font-semibold uppercase tracking-widest mb-6 shimmer-effect">
+            <span className="inline-block bg-gradient-to-r from-[#ad5945] to-[#d38074] text-white px-6 py-3 rounded-full font-inter text-sm font-semibold uppercase tracking-widest mb-6 shimmer-effect glowing-badge">
               Notre Expertise
             </span>
-            <h2 className="font-cormorant text-5xl md:text-6xl font-light text-white mb-8 tracking-tight">
+            <h2 className="font-cormorant text-5xl md:text-6xl font-light text-white mb-8 tracking-tight text-glow">
               Services Premium
               <span className="block font-playfair italic text-5xl md:text-6xl text-[#d38074] mt-2">
                 à Votre Disposition
@@ -727,13 +806,13 @@ export default function HomePage({ onNavigate }: HomePageProps) {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-2 gap-8">
             {detailedServices.map((service, index) => (
               <div
                 key={index}
                 id={`service-${index}`}
                 data-animate
-                className="group relative bg-white/10 backdrop-blur-md rounded-3xl p-8 border border-white/20 hover:border-[#d38074]/50 transition-all duration-500 hover:-translate-y-3 hover:shadow-2xl hover:shadow-[#ad5945]/20 cursor-pointer overflow-hidden"
+                className="group relative bg-white/10 backdrop-blur-md rounded-3xl p-8 border border-white/20 hover:border-[#d38074]/50 transition-all duration-500 hover:-translate-y-3 hover:shadow-2xl hover:shadow-[#ad5945]/30 cursor-pointer overflow-hidden"
                 onClick={() => onNavigate('services')}
                 onMouseEnter={() => setIsHovering(`service-${index}`)}
                 onMouseLeave={() => setIsHovering(null)}
@@ -747,14 +826,14 @@ export default function HomePage({ onNavigate }: HomePageProps) {
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
                 </div>
 
-                <div className={`relative w-20 h-20 rounded-2xl bg-white flex items-center justify-center mb-6 transform group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 shadow-lg overflow-hidden`}>
+                <div className={`relative w-20 h-20 rounded-2xl bg-white flex items-center justify-center mb-6 transform group-hover:scale-125 group-hover:rotate-12 transition-all duration-500 shadow-lg overflow-hidden group-hover:shadow-xl group-hover:shadow-[#ad5945]/40`}>
                   <div className="absolute inset-0 bg-gradient-to-br from-[#ad5945]/20 to-[#d38074]/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   <img 
                     src={service.icon} 
                     alt={service.title}
-                    className="w-12 h-12 relative z-10 group-hover:scale-110 transition-transform duration-300"
+                    className="w-12 h-12 relative z-10 group-hover:scale-125 group-hover:rotate-12 transition-transform duration-500"
                     style={{
-                      animation: isHovering === `service-${index}` ? 'pulse 1s ease-in-out infinite' : 'none'
+                      animation: isHovering === `service-${index}` ? 'pulse 1s ease-in-out infinite' : 'wiggle 3s ease-in-out infinite'
                     }}
                   />
                 </div>
@@ -766,7 +845,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
                   {service.description}
                 </p>
 
-                <div className="flex items-center text-[#d38074] font-inter font-medium text-sm group-hover:text-[#ca715b] transition-colors tracking-wide">
+                <div className="flex items-center text-[#d38074] font-inter font-medium text-sm group-hover:text-[#ca715b] transition-colors tracking-wide group-hover:translate-x-2">
                   <span className="mr-3">En savoir plus</span>
                   <ArrowRight className="w-4 h-4 transform group-hover:translate-x-2 transition-transform" />
                 </div>
@@ -788,12 +867,12 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           >
             <button
               onClick={() => onNavigate('services')}
-              className="group relative bg-gradient-to-r from-[#ad5945] to-[#d38074] text-white px-12 py-6 rounded-full font-inter font-semibold text-lg hover:shadow-2xl hover:shadow-[#ad5945]/50 transform hover:-translate-y-2 hover:scale-105 transition-all inline-flex items-center gap-3 overflow-hidden magnetic-button"
+              className="group relative bg-gradient-to-r from-[#ad5945] to-[#d38074] text-white px-12 py-6 rounded-full font-inter font-semibold text-lg hover:shadow-2xl hover:shadow-[#ad5945]/50 transform hover:-translate-y-2 hover:scale-110 transition-all duration-300 inline-flex items-center gap-3 overflow-hidden magnetic-button"
               onMouseEnter={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect();
                 const x = e.clientX - rect.left - rect.width / 2;
                 const y = e.clientY - rect.top - rect.height / 2;
-                e.currentTarget.style.transform = `translate(${x * 0.1}px, ${y * 0.1}px) translateY(-8px) scale(1.05)`;
+                e.currentTarget.style.transform = `translate(${x * 0.1}px, ${y * 0.1}px) translateY(-8px) scale(1.1)`;
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.transform = '';
@@ -911,7 +990,10 @@ export default function HomePage({ onNavigate }: HomePageProps) {
               transition: 'all 0.8s ease-out',
             }}
           >
-            <h2 className="font-cormorant text-5xl md:text-6xl font-light mb-6 tracking-tight">
+            <span className="inline-block bg-gradient-to-r from-[#ad5945] to-[#d38074] text-white px-6 py-3 rounded-full font-inter text-sm font-semibold uppercase tracking-widest mb-6 shimmer-effect glowing-badge">
+              Avis Clients
+            </span>
+            <h2 className="font-cormorant text-5xl md:text-6xl font-light mb-6 tracking-tight text-glow">
               Témoignages
               <span className="block font-playfair italic text-4xl md:text-5xl text-[#ad5945] mt-3">
                 de nos Clients
@@ -934,16 +1016,15 @@ export default function HomePage({ onNavigate }: HomePageProps) {
             {testimonials.map((testimonial) => (
               <SwiperSlide key={testimonial.id}>
                 <div 
-                  className="bg-white rounded-3xl p-10 shadow-lg hover:shadow-2xl transition-all duration-500 h-full flex flex-col group hover:-translate-y-3 border border-gray-100 relative overflow-hidden"
+                  className="bg-white rounded-3xl p-10 shadow-lg hover:shadow-2xl transition-all duration-500 h-full flex flex-col group hover:-translate-y-3 border border-gray-100 relative overflow-hidden transform hover:scale-105"
                   onMouseEnter={() => setIsHovering(`testimonial-${testimonial.id}`)}
                   onMouseLeave={() => setIsHovering(null)}
                 >
                   {/* Effet de brillance au survol */}
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent opacity-0 group-hover:opacity-100 -translate-x-full group-hover:translate-x-full transition-all duration-1000"></div>
 
-
-                  <div className="flex items-center mb-6">
-                    <div className="w-14 h-14 bg-gradient-to-br from-[#ad5945] to-[#d38074] rounded-full flex items-center justify-center text-white font-playfair font-bold text-2xl shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-transform relative overflow-hidden">
+                  <div className="flex items-center mb-6 relative z-10">
+                    <div className="w-14 h-14 bg-gradient-to-br from-[#ad5945] to-[#d38074] rounded-full flex items-center justify-center text-white font-playfair font-bold text-2xl shadow-lg group-hover:scale-125 group-hover:rotate-12 transition-transform relative overflow-hidden group-hover:shadow-xl group-hover:shadow-[#ad5945]/40">
                       <span className="relative z-10">{testimonial.name.charAt(0)}</span>
                       <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                     </div>
@@ -958,11 +1039,11 @@ export default function HomePage({ onNavigate }: HomePageProps) {
                     "{testimonial.text}"
                   </p>
 
-                  <div className="mt-auto pt-6 border-t border-gray-100 flex items-center gap-2 text-sm text-green-600 font-inter font-medium">
+                  <div className="mt-auto pt-6 border-t border-gray-100 flex items-center gap-2 text-sm text-green-600 font-inter font-medium relative z-10 group-hover:text-green-700 transition-colors">
                     <img 
                       src="https://cdn-icons-png.flaticon.com/512/190/190411.png"
                       alt="Verified"
-                      className="w-5 h-5 group-hover:scale-110 transition-transform"
+                      className="w-5 h-5 group-hover:scale-125 transition-transform"
                     />
                     <span>Témoignage vérifié</span>
                   </div>
@@ -972,6 +1053,8 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           </Swiper>
         </div>
       </section>
+
+       
 
       {/* Section Boutique avec animations dynamiques */}
       <section 
@@ -1011,7 +1094,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
         </div>
 
         <div className="max-w-4xl mx-auto px-4 relative z-10">
-          <div className="inline-flex items-center gap-3 bg-white/20 backdrop-blur-md px-6 py-3 rounded-full border border-white/30 mb-8 shimmer-effect">
+          <div className="inline-flex items-center gap-3 bg-white/20 backdrop-blur-md px-6 py-3 rounded-full border border-white/30 mb-8 shimmer-effect glowing-badge" style={{ animation: 'slideDown 0.8s ease-out' }}>
             <img 
               src="https://cdn-icons-png.flaticon.com/512/2933/2933245.png"
               alt="Sparkles"
@@ -1021,13 +1104,13 @@ export default function HomePage({ onNavigate }: HomePageProps) {
             <span className="font-inter text-sm font-semibold uppercase tracking-widest">Collection Exclusive</span>
           </div>
 
-          <h2 className="font-cormorant text-5xl md:text-6xl font-light mb-8 tracking-tight">
+          <h2 className="font-cormorant text-5xl md:text-6xl font-light mb-8 tracking-tight text-glow" style={{ animation: 'slideDown 0.8s ease-out 0.1s both' }}>
             Découvrez notre
             <span className="block font-playfair italic text-5xl md:text-6xl text-white mt-2">
               Collection de Parfums
             </span>
           </h2>
-          <p className="font-inter text-xl mb-12 text-white/90 max-w-2xl mx-auto leading-relaxed font-light">
+          <p className="font-inter text-xl mb-12 text-white/90 max-w-2xl mx-auto leading-relaxed font-light" style={{ animation: 'slideUp 0.8s ease-out 0.2s both' }}>
             Des fragrances exclusives pour sublimer vos événements et créer une ambiance unique
           </p>
           
@@ -1035,9 +1118,9 @@ export default function HomePage({ onNavigate }: HomePageProps) {
             {['Fragrances Premium', 'Fabrication Artisanale', 'Livraison Rapide'].map((feature, index) => (
               <div 
                 key={index}
-                className="flex items-center gap-3 bg-white/10 backdrop-blur-sm px-5 py-3 rounded-full font-inter font-light hover:bg-white/20 transition-all duration-300 hover:scale-105 cursor-default"
+                className="flex items-center gap-3 bg-white/10 backdrop-blur-sm px-5 py-3 rounded-full font-inter font-light hover:bg-white/20 transition-all duration-300 hover:scale-110 cursor-default transform hover:-translate-y-1"
                 style={{
-                  animation: `fadeInUp 0.6s ease-out ${index * 0.2}s both`
+                  animation: `slideUp 0.6s ease-out ${0.3 + index * 0.1}s both`
                 }}
               >
                 <img 
@@ -1052,12 +1135,13 @@ export default function HomePage({ onNavigate }: HomePageProps) {
 
           <button
             onClick={() => onNavigate('boutique')}
-            className="group relative bg-white text-[#ad5945] px-12 py-6 rounded-full font-inter font-semibold text-lg hover:shadow-2xl transform hover:-translate-y-2 hover:scale-105 transition-all duration-300 inline-flex items-center gap-3 overflow-hidden magnetic-button"
+            className="group relative bg-white text-[#ad5945] px-12 py-6 rounded-full font-inter font-semibold text-lg hover:shadow-2xl transform hover:-translate-y-2 hover:scale-110 transition-all duration-300 inline-flex items-center gap-3 overflow-hidden magnetic-button"
+            style={{ animation: 'slideUp 0.8s ease-out 0.4s both' }}
             onMouseEnter={(e) => {
               const rect = e.currentTarget.getBoundingClientRect();
               const x = e.clientX - rect.left - rect.width / 2;
               const y = e.clientY - rect.top - rect.height / 2;
-              e.currentTarget.style.transform = `translate(${x * 0.1}px, ${y * 0.1}px) translateY(-8px) scale(1.05)`;
+              e.currentTarget.style.transform = `translate(${x * 0.1}px, ${y * 0.1}px) translateY(-8px) scale(1.1)`;
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = '';
