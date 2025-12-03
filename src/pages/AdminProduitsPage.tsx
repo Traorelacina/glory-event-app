@@ -637,7 +637,7 @@ export default function AdminProduitsPage() {
                         <td className="px-6 py-4">
                           <div className="relative group">
                             <img 
-                              src={`http://127.0.0.1:8000/storage/${produit.image}`} 
+                              src={`${STORAGE_URL}/${produit.image}`} 
                               alt={produit.name}
                               className="w-20 h-20 object-cover rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300"
                               onError={(e) => {
