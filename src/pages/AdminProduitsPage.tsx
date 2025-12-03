@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import AdminLayout from '../components/AdminLayout';
 import { useAuthStore } from '../../store/AuthStore';
-import { Plus, Search, Trash2, Edit, Loader, AlertCircle, Package, Upload, X, Sparkles, Star, ArrowRight, Save } from 'lucide-react';
+import { Plus, Search, Trash2, Edit, Loader, AlertCircle, Package, Upload, X, Sparkles, Star, Save } from 'lucide-react';
 
 interface Produit {
   id: number;
@@ -15,6 +15,10 @@ interface Produit {
   featured: boolean;
   created_at: string;
 }
+
+// API URL - URL DE PRODUCTION FIXE
+const API_URL = 'https://detailed-odette-freelence-76d5d470.koyeb.app/api';
+const STORAGE_URL = 'https://detailed-odette-freelence-76d5d470.koyeb.app/storage';
 
 export default function AdminProduitsPage() {
   const { token } = useAuthStore();
@@ -84,7 +88,7 @@ export default function AdminProduitsPage() {
     if (!token) return;
     try {
       setLoading(true);
-      const response = await fetch('https://detailed-odette-freelence-76d5d470.koyeb.app/api/admin/produits', {
+      const response = await fetch(`${API_URL}/admin/produits`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
@@ -144,7 +148,7 @@ export default function AdminProduitsPage() {
       in_stock: produit.in_stock,
       featured: produit.featured,
     });
-    setImagePreview(`https://detailed-odette-freelence-76d5d470.koyeb.app/storage/${produit.image}`);
+    setImagePreview(`${STORAGE_URL}/${produit.image}`);
     setSelectedImage(null);
     setShowForm(true);
     setError(null);
@@ -191,27 +195,25 @@ export default function AdminProduitsPage() {
       }
 
       const url = editingProduct 
-  ? `https://detailed-odette-freelence-76d5d470.koyeb.app/api/admin/produits/${editingProduct.id}`
-  : 'https://detailed-odette-freelence-76d5d470.koyeb.app/api/admin/produits';
+        ? `${API_URL}/admin/produits/${editingProduct.id}`
+        : `${API_URL}/admin/produits`;
 
-// Toujours utiliser POST
-const method = 'POST';
+      // Toujours utiliser POST
+      const method = 'POST';
 
-// Pour la mise à jour, ajouter _method
-if (editingProduct) {
-  formDataToSend.append('_method', 'PUT');
-}
+      // Pour la mise à jour, ajouter _method
+      if (editingProduct) {
+        formDataToSend.append('_method', 'PUT');
+      }
 
-const response = await fetch(url, {
-  method: method, // Toujours POST
-  headers: {
-    'Authorization': `Bearer ${token}`,
-    'Accept': 'application/json',
-  },
-  body: formDataToSend,
-});
-
-     
+      const response = await fetch(url, {
+        method: method,
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+        body: formDataToSend,
+      });
 
       const contentType = response.headers.get('content-type');
       
@@ -273,7 +275,7 @@ const response = await fetch(url, {
     if (!token) return;
 
     try {
-      const response = await fetch(`https://detailed-odette-freelence-76d5d470.koyeb.app/api/admin/produits/${id}`, {
+      const response = await fetch(`${API_URL}/admin/produits/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
