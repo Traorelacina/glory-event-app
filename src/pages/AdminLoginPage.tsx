@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/AuthStore';
 import { Mail, Lock, AlertCircle, Loader, Sparkles, CheckCircle, ArrowRight } from 'lucide-react';
@@ -12,14 +12,19 @@ export default function AdminLoginPage() {
   const [localError, setLocalError] = useState<string | null>(null);
   const [scrollY, setScrollY] = useState(0);
   const [hasAnimated, setHasAnimated] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
-  // Rediriger si déjà connecté
+  // Rediriger si déjà connecté - AVEC GARDE CONTRE DOUBLE REDIRECTION
   useEffect(() => {
-    if (isHydrated && admin && token) {
+    if (isHydrated && admin && token && !isRedirecting) {
       console.log('Already logged in, redirecting...');
-      navigate('/admin/dashboard', { replace: true });
+      setIsRedirecting(true);
+      // Utiliser un délai minimal pour éviter les conflits
+      setTimeout(() => {
+        navigate('/admin/dashboard', { replace: true });
+      }, 100);
     }
-  }, [admin, token, isHydrated, navigate]);
+  }, [admin, token, isHydrated, navigate, isRedirecting]);
 
   // Effet parallax
   useEffect(() => {
@@ -38,6 +43,12 @@ export default function AdminLoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Empêcher les soumissions multiples
+    if (isLoading || isRedirecting) {
+      return;
+    }
+
     setLocalError(null);
     clearError();
 
@@ -48,32 +59,40 @@ export default function AdminLoginPage() {
 
     try {
       console.log('Attempting login...');
+      setIsRedirecting(true);
+      
       await login({ email, password });
       
-      // Attendre un peu plus pour être sûr que la persistance est terminée
-      await new Promise(resolve => setTimeout(resolve, 200));
+      // Attendre que la persistance soit terminée
+      await new Promise(resolve => setTimeout(resolve, 300));
       
       // Vérifier que les données sont bien présentes
       const state = useAuthStore.getState();
       if (state.admin && state.token) {
         console.log('Login successful, navigating to dashboard...');
-        navigate('/admin/dashboard', { replace: true });
+        navigate('/admin/dashboard');
       } else {
         throw new Error('Données de connexion non sauvegardées');
       }
     } catch (err: any) {
       console.error('Login error:', err);
       setLocalError(err.message || 'Erreur de connexion');
+      setIsRedirecting(false);
     }
   };
 
   const displayError = localError || error;
 
-  // Ne pas afficher le formulaire si on est en train de charger les données
-  if (!isHydrated) {
+  // Afficher un loader pendant l'hydratation OU la redirection
+  if (!isHydrated || isRedirecting) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900">
-        <Loader className="w-8 h-8 text-purple-500 animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+        <div className="text-center">
+          <Loader className="w-12 h-12 text-purple-500 animate-spin mx-auto mb-4" />
+          <p className="text-white text-lg font-semibold">
+            {isRedirecting ? 'Redirection en cours...' : 'Chargement...'}
+          </p>
+        </div>
       </div>
     );
   }
@@ -195,7 +214,7 @@ export default function AdminLoginPage() {
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="admin@example.com"
                       className="w-full pl-12 pr-4 py-3.5 bg-white/5 backdrop-blur-sm border-2 border-white/20 rounded-xl text-white placeholder-gray-300 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-400/30 transition-all duration-300"
-                      disabled={isLoading}
+                      disabled={isLoading || isRedirecting}
                       autoComplete="email"
                     />
                   </div>
@@ -225,7 +244,7 @@ export default function AdminLoginPage() {
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
                       className="w-full pl-12 pr-4 py-3.5 bg-white/5 backdrop-blur-sm border-2 border-white/20 rounded-xl text-white placeholder-gray-300 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30 transition-all duration-300"
-                      disabled={isLoading}
+                      disabled={isLoading || isRedirecting}
                       autoComplete="current-password"
                     />
                   </div>
@@ -235,14 +254,16 @@ export default function AdminLoginPage() {
               {/* Bouton de connexion */}
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || isRedirecting}
                 className="w-full group relative bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] hover:from-[#EC4899] hover:to-[#8B5CF6] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3.5 rounded-xl transition-all duration-500 transform hover:-translate-y-1 hover:shadow-2xl hover:shadow-purple-500/50 disabled:hover:transform-none disabled:hover:shadow-none flex items-center justify-center gap-3 overflow-hidden"
               >
                 <span className="absolute inset-0 bg-gradient-to-r from-[#EC4899] to-[#8B5CF6] translate-x-full group-hover:translate-x-0 transition-transform duration-300"></span>
-                {isLoading ? (
+                {isLoading || isRedirecting ? (
                   <>
                     <Loader className="relative z-10 animate-spin" size={20} />
-                    <span className="relative z-10">Connexion en cours...</span>
+                    <span className="relative z-10">
+                      {isRedirecting ? 'Redirection...' : 'Connexion en cours...'}
+                    </span>
                   </>
                 ) : (
                   <>
