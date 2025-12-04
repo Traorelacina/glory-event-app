@@ -5,109 +5,140 @@ import { Mail, Lock, AlertCircle, Loader, Sparkles, CheckCircle, ArrowRight } fr
 
 export default function AdminLoginPage() {
   const navigate = useNavigate();
-  const { login, isLoading, error, clearError, admin, token } = useAuthStore();
+  const { login, isLoading, error, clearError, admin, token, isInitialized } = useAuthStore();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
   const [scrollY, setScrollY] = useState(0);
   const [hasAnimated, setHasAnimated] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Refs pour éviter les doubles soumissions/redirections
+  // Refs pour éviter les doubles actions
   const hasRedirected = useRef(false);
-  const isLoginInProgress = useRef(false);
+  const loginAttemptRef = useRef(false);
+  const navigationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Redirection unique et robuste
+  // ==============================
+  // REDIRECTION AUTOMATIQUE
+  // ==============================
   useEffect(() => {
-    // Vérifier si admin ET token sont présents et valides
-    if (admin && token && !hasRedirected.current && !isLoginInProgress.current) {
+    // Attendre que le store soit initialisé
+    if (!isInitialized) {
+      console.log('⏳ En attente de l\'initialisation du store...');
+      return;
+    }
+
+    // Si déjà authentifié et pas encore redirigé
+    if (admin && token && !hasRedirected.current) {
+      console.log('🔄 Utilisateur déjà authentifié, redirection...');
       hasRedirected.current = true;
       
-      // Petit délai pour s'assurer que le state est complètement stabilisé
-      const redirectTimer = setTimeout(() => {
-        navigate('/admin/dashboard', { replace: true });
-      }, 100);
-
-      return () => clearTimeout(redirectTimer);
+      // Navigation immédiate sans délai
+      navigate('/admin/dashboard', { replace: true });
     }
-  }, [admin, token, navigate]);
+  }, [admin, token, isInitialized, navigate]);
 
-  // Réinitialiser les refs quand on revient sur la page
+  // ==============================
+  // CLEANUP AU DÉMONTAGE
+  // ==============================
   useEffect(() => {
     return () => {
+      // Nettoyer les timeouts
+      if (navigationTimeoutRef.current) {
+        clearTimeout(navigationTimeoutRef.current);
+      }
+      
+      // Réinitialiser les flags
       hasRedirected.current = false;
-      isLoginInProgress.current = false;
+      loginAttemptRef.current = false;
     };
   }, []);
 
-  // Effet parallax
+  // ==============================
+  // EFFET PARALLAX
+  // ==============================
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Animation initiale
+  // ==============================
+  // ANIMATION INITIALE
+  // ==============================
   useEffect(() => {
     const timer = setTimeout(() => setHasAnimated(true), 100);
     return () => clearTimeout(timer);
   }, []);
 
+  // ==============================
+  // GESTION DE LA SOUMISSION
+  // ==============================
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Empêcher toute soumission multiple
-    if (isLoading || isSubmitting || isLoginInProgress.current) {
-      console.log('Soumission bloquée - déjà en cours');
+    // Empêcher les doubles soumissions
+    if (isLoading || loginAttemptRef.current) {
+      console.log('⚠️ Soumission bloquée - déjà en cours');
       return;
     }
 
-    // Validation
+    // Validation des champs
     if (!email.trim() || !password.trim()) {
       setLocalError('Veuillez remplir tous les champs');
       return;
     }
 
-    // Validation email basique
+    // Validation email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
       setLocalError('Veuillez entrer une adresse email valide');
       return;
     }
 
-    // Marquer la soumission comme en cours
-    isLoginInProgress.current = true;
-    setIsSubmitting(true);
+    // Marquer la tentative de connexion
+    loginAttemptRef.current = true;
     setLocalError(null);
     clearError();
 
     try {
-      console.log('Tentative de connexion...');
+      console.log('🔑 Tentative de connexion pour:', email.trim());
       
-      // Appel de login qui met à jour le store de manière atomique
+      // Appel de connexion
       await login({ 
         email: email.trim(), 
         password: password.trim() 
       });
 
-      console.log('Connexion réussie');
+      console.log('✅ Login réussi, state mis à jour');
       
-      // La redirection se fera automatiquement via useEffect
-      // quand admin et token seront mis à jour dans le store
+      // ATTENDRE que le state soit vraiment mis à jour
+      // puis rediriger immédiatement
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      // Vérifier que la connexion a réussi
+      const currentState = useAuthStore.getState();
+      if (currentState.admin && currentState.token) {
+        console.log('🚀 Redirection vers le dashboard...');
+        hasRedirected.current = true;
+        navigate('/admin/dashboard', { replace: true });
+      } else {
+        console.error('❌ State non mis à jour après login');
+        setLocalError('Erreur lors de la connexion. Veuillez réessayer.');
+        loginAttemptRef.current = false;
+      }
       
     } catch (err: any) {
-      console.error('Erreur de connexion:', err);
+      console.error('❌ Erreur de connexion:', err);
       
-      // Réinitialiser les flags en cas d'erreur
-      isLoginInProgress.current = false;
-      setIsSubmitting(false);
+      // Réinitialiser le flag
+      loginAttemptRef.current = false;
       
       // Afficher l'erreur
       const errorMessage = err.message || err.response?.data?.message || 'Erreur de connexion. Veuillez réessayer.';
       setLocalError(errorMessage);
       
-      // Nettoyer le mot de passe en cas d'erreur
+      // Nettoyer le mot de passe
       setPassword('');
     }
   };
@@ -231,7 +262,7 @@ export default function AdminLoginPage() {
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="admin@example.com"
                       className="w-full pl-12 pr-4 py-3.5 bg-white/5 backdrop-blur-sm border-2 border-white/20 rounded-xl text-white placeholder-gray-300 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-400/30 transition-all duration-300"
-                      disabled={isLoading || isSubmitting}
+                      disabled={isLoading}
                       autoComplete="email"
                       required
                     />
@@ -262,7 +293,7 @@ export default function AdminLoginPage() {
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
                       className="w-full pl-12 pr-4 py-3.5 bg-white/5 backdrop-blur-sm border-2 border-white/20 rounded-xl text-white placeholder-gray-300 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30 transition-all duration-300"
-                      disabled={isLoading || isSubmitting}
+                      disabled={isLoading}
                       autoComplete="current-password"
                       required
                     />
@@ -273,11 +304,11 @@ export default function AdminLoginPage() {
               {/* Bouton de connexion */}
               <button
                 type="submit"
-                disabled={isLoading || isSubmitting}
+                disabled={isLoading}
                 className="w-full group relative bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] hover:from-[#EC4899] hover:to-[#8B5CF6] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3.5 rounded-xl transition-all duration-500 transform hover:-translate-y-1 hover:shadow-2xl hover:shadow-purple-500/50 disabled:hover:transform-none disabled:hover:shadow-none flex items-center justify-center gap-3 overflow-hidden"
               >
                 <span className="absolute inset-0 bg-gradient-to-r from-[#EC4899] to-[#8B5CF6] translate-x-full group-hover:translate-x-0 transition-transform duration-300"></span>
-                {(isLoading || isSubmitting) ? (
+                {isLoading ? (
                   <>
                     <Loader className="relative z-10 animate-spin" size={20} />
                     <span className="relative z-10">Connexion en cours...</span>
