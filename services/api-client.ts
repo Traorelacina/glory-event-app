@@ -27,7 +27,6 @@ export interface ApiError {
 
 const API_BASE_URL = 'https://detailed-odette-freelence-76d5d470.koyeb.app/api';
 
-// Fonction séparée pour éviter les problèmes de minification
 export const authLogin = async (credentials: LoginCredentials): Promise<LoginResponse> => {
   console.log('🔐 Login attempt to:', `${API_BASE_URL}/login`);
   
