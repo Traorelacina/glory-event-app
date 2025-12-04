@@ -5,7 +5,7 @@ import { Mail, Lock, AlertCircle, Loader, Sparkles, Star, CheckCircle, ArrowRigh
 
 export default function AdminLoginPage() {
   const navigate = useNavigate();
-  const { login, isLoading, error, clearError } = useAuthStore();
+  const { login, isLoading, error, clearError, admin, token, isHydrated } = useAuthStore();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -13,6 +13,14 @@ export default function AdminLoginPage() {
   const [scrollY, setScrollY] = useState(0);
   const [isVisible, setIsVisible] = useState<{ [key: string]: boolean }>({});
   const observerRef = useRef<IntersectionObserver | null>(null);
+
+  // Rediriger si déjà connecté
+  useEffect(() => {
+    if (isHydrated && admin && token) {
+      console.log('Already logged in, redirecting...');
+      navigate('/admin/dashboard', { replace: true });
+    }
+  }, [admin, token, isHydrated, navigate]);
 
   // Effet parallax
   useEffect(() => {
@@ -52,14 +60,36 @@ export default function AdminLoginPage() {
     }
 
     try {
+      console.log('Attempting login...');
       await login({ email, password });
-      navigate('/admin/dashboard');
+      
+      // Attendre un peu plus pour être sûr que la persistance est terminée
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Vérifier que les données sont bien présentes
+      const state = useAuthStore.getState();
+      if (state.admin && state.token) {
+        console.log('Login successful, navigating to dashboard...');
+        navigate('/admin/dashboard', { replace: true });
+      } else {
+        throw new Error('Données de connexion non sauvegardées');
+      }
     } catch (err: any) {
+      console.error('Login error:', err);
       setLocalError(err.message || 'Erreur de connexion');
     }
   };
 
   const displayError = localError || error;
+
+  // Ne pas afficher le formulaire si on est en train de charger les données
+  if (!isHydrated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+        <Loader className="w-8 h-8 text-purple-500 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen font-sans text-[#111827] overflow-x-hidden">
@@ -300,8 +330,6 @@ export default function AdminLoginPage() {
           </div>
         </div>
       </section>
-
-      
 
       {/* Animations CSS */}
       <style jsx>{`
