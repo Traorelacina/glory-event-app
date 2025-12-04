@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { LoginCredentials, LoginResponse, authApi } from '../../services/api';
 
 export interface Admin {
@@ -24,7 +24,7 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       admin: null,
       token: null,
       isLoading: false,
@@ -32,16 +32,25 @@ export const useAuthStore = create<AuthState>()(
 
       login: async (credentials: LoginCredentials) => {
         set({ isLoading: true, error: null });
+        
         try {
           const response: LoginResponse = await authApi.login(credentials);
+          
+          // Mise à jour ATOMIQUE du state - les deux en même temps
           set({
             admin: response.user,
             token: response.token,
             isLoading: false,
             error: null,
           });
+          
+          // Le middleware persist va automatiquement sauvegarder
+          // Pas besoin d'attendre, c'est synchrone avec localStorage
+          
         } catch (error: any) {
           set({
+            admin: null,
+            token: null,
             isLoading: false,
             error: error.message || 'Erreur de connexion',
           });
@@ -50,14 +59,17 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: async () => {
-        const state = (useAuthStore as any).getState();
-        if (state.token) {
+        const { token } = get();
+        
+        if (token) {
           try {
-            await authApi.logout(state.token);
+            await authApi.logout(token);
           } catch (error) {
             console.error('Erreur lors de la déconnexion:', error);
           }
         }
+        
+        // Réinitialisation complète
         set({
           admin: null,
           token: null,
@@ -67,17 +79,24 @@ export const useAuthStore = create<AuthState>()(
       },
 
       clearError: () => set({ error: null }),
-
+      
       setAdmin: (admin: Admin | null) => set({ admin }),
-
+      
       setToken: (token: string | null) => set({ token }),
     }),
     {
       name: 'auth-store',
+      storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         admin: state.admin,
         token: state.token,
       }),
+      // Options pour optimiser la performance
+      version: 1,
+      migrate: (persistedState: any, version: number) => {
+        // Migration si besoin dans le futur
+        return persistedState;
+      },
     }
   )
 );
