@@ -1,30 +1,28 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/AuthStore';
 import { Mail, Lock, AlertCircle, Loader, Sparkles, CheckCircle, ArrowRight } from 'lucide-react';
 
 export default function AdminLoginPage() {
   const navigate = useNavigate();
-  const { login, isLoading, error, clearError, admin, token, isHydrated } = useAuthStore();
+  const { login, isLoading, error, clearError, admin, token } = useAuthStore();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
   const [scrollY, setScrollY] = useState(0);
   const [hasAnimated, setHasAnimated] = useState(false);
-  const [isRedirecting, setIsRedirecting] = useState(false);
+  
+  // Ref pour éviter les doubles redirections
+  const hasRedirected = useRef(false);
 
-  // Rediriger si déjà connecté - AVEC GARDE CONTRE DOUBLE REDIRECTION
+  // Redirection unique quand admin + token sont présents
   useEffect(() => {
-    if (isHydrated && admin && token && !isRedirecting) {
-      console.log('Already logged in, redirecting...');
-      setIsRedirecting(true);
-      // Utiliser un délai minimal pour éviter les conflits
-      setTimeout(() => {
-        navigate('/admin/dashboard', { replace: true });
-      }, 100);
+    if (admin && token && !hasRedirected.current) {
+      hasRedirected.current = true;
+      navigate('/admin/dashboard', { replace: true });
     }
-  }, [admin, token, isHydrated, navigate, isRedirecting]);
+  }, [admin, token, navigate]);
 
   // Effet parallax
   useEffect(() => {
@@ -33,69 +31,38 @@ export default function AdminLoginPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Animation initiale une seule fois
+  // Animation initiale
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setHasAnimated(true);
-    }, 100);
+    const timer = setTimeout(() => setHasAnimated(true), 100);
     return () => clearTimeout(timer);
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Empêcher les soumissions multiples
-    if (isLoading || isRedirecting) {
-      return;
-    }
+    // Empêcher soumissions multiples
+    if (isLoading) return;
 
     setLocalError(null);
     clearError();
 
+    // Validation
     if (!email || !password) {
       setLocalError('Veuillez remplir tous les champs');
       return;
     }
 
     try {
-      console.log('Attempting login...');
-      setIsRedirecting(true);
-      
+      // Le login met à jour admin et token dans le store
       await login({ email, password });
-      
-      // Attendre que la persistance soit terminée
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      // Vérifier que les données sont bien présentes
-      const state = useAuthStore.getState();
-      if (state.admin && state.token) {
-        console.log('Login successful, navigating to dashboard...');
-        navigate('/admin/dashboard');
-      } else {
-        throw new Error('Données de connexion non sauvegardées');
-      }
+      // La redirection se fera automatiquement via useEffect
     } catch (err: any) {
       console.error('Login error:', err);
       setLocalError(err.message || 'Erreur de connexion');
-      setIsRedirecting(false);
     }
   };
 
   const displayError = localError || error;
-
-  // Afficher un loader pendant l'hydratation OU la redirection
-  if (!isHydrated || isRedirecting) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-        <div className="text-center">
-          <Loader className="w-12 h-12 text-purple-500 animate-spin mx-auto mb-4" />
-          <p className="text-white text-lg font-semibold">
-            {isRedirecting ? 'Redirection en cours...' : 'Chargement...'}
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen font-sans text-[#111827] overflow-x-hidden">
@@ -214,7 +181,7 @@ export default function AdminLoginPage() {
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="admin@example.com"
                       className="w-full pl-12 pr-4 py-3.5 bg-white/5 backdrop-blur-sm border-2 border-white/20 rounded-xl text-white placeholder-gray-300 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-400/30 transition-all duration-300"
-                      disabled={isLoading || isRedirecting}
+                      disabled={isLoading}
                       autoComplete="email"
                     />
                   </div>
@@ -244,7 +211,7 @@ export default function AdminLoginPage() {
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
                       className="w-full pl-12 pr-4 py-3.5 bg-white/5 backdrop-blur-sm border-2 border-white/20 rounded-xl text-white placeholder-gray-300 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30 transition-all duration-300"
-                      disabled={isLoading || isRedirecting}
+                      disabled={isLoading}
                       autoComplete="current-password"
                     />
                   </div>
@@ -254,16 +221,14 @@ export default function AdminLoginPage() {
               {/* Bouton de connexion */}
               <button
                 type="submit"
-                disabled={isLoading || isRedirecting}
+                disabled={isLoading}
                 className="w-full group relative bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] hover:from-[#EC4899] hover:to-[#8B5CF6] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3.5 rounded-xl transition-all duration-500 transform hover:-translate-y-1 hover:shadow-2xl hover:shadow-purple-500/50 disabled:hover:transform-none disabled:hover:shadow-none flex items-center justify-center gap-3 overflow-hidden"
               >
                 <span className="absolute inset-0 bg-gradient-to-r from-[#EC4899] to-[#8B5CF6] translate-x-full group-hover:translate-x-0 transition-transform duration-300"></span>
-                {isLoading || isRedirecting ? (
+                {isLoading ? (
                   <>
                     <Loader className="relative z-10 animate-spin" size={20} />
-                    <span className="relative z-10">
-                      {isRedirecting ? 'Redirection...' : 'Connexion en cours...'}
-                    </span>
+                    <span className="relative z-10">Connexion en cours...</span>
                   </>
                 ) : (
                   <>
