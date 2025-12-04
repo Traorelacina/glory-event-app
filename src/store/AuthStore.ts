@@ -22,7 +22,9 @@ interface AuthState {
   setAdmin: (admin: Admin | null) => void;
   setToken: (token: string | null) => void;
   checkAuth: () => boolean;
+  checkAuthAsync: () => Promise<boolean>;
   resetAuth: () => void;
+  getAuthState: () => { admin: Admin | null; token: string | null };
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -64,6 +66,9 @@ export const useAuthStore = create<AuthState>()(
           }, true); // Le "true" force une mise à jour synchrone
           
           console.log('💾 Session sauvegardée');
+          
+          // Forcer l'écriture dans localStorage
+          await new Promise(resolve => setTimeout(resolve, 0));
           
         } catch (error: any) {
           console.error('❌ Erreur de connexion:', error);
@@ -144,11 +149,34 @@ export const useAuthStore = create<AuthState>()(
         const { admin, token } = get();
         const isAuthenticated = !!(admin && token);
         
-        if (!isAuthenticated) {
-          console.log('🔒 Non authentifié');
-        }
+        console.log('🔍 Vérification auth:', { 
+          hasAdmin: !!admin, 
+          hasToken: !!token,
+          isAuthenticated 
+        });
         
         return isAuthenticated;
+      },
+
+      checkAuthAsync: async (): Promise<boolean> => {
+        return new Promise((resolve) => {
+          // Vérifier immédiatement
+          const { admin, token } = get();
+          const isAuthenticated = !!(admin && token);
+          
+          console.log('🔍 Vérification auth async:', { 
+            hasAdmin: !!admin, 
+            hasToken: !!token,
+            isAuthenticated 
+          });
+          
+          resolve(isAuthenticated);
+        });
+      },
+
+      getAuthState: () => {
+        const { admin, token } = get();
+        return { admin, token };
       },
 
       resetAuth: () => {
@@ -184,19 +212,23 @@ export const useAuthStore = create<AuthState>()(
         return (state, error) => {
           if (error) {
             console.error('❌ Erreur d\'hydratation:', error);
-            state?.resetAuth();
-          } else {
-            console.log('✅ Store hydraté avec succès');
-            
             if (state) {
-              // Forcer l'initialisation
-              state.isInitialized = true;
-              
-              if (state.admin && state.token) {
-                console.log('👤 Session restaurée:', state.admin.email);
-              } else {
-                console.log('📭 Aucune session active');
-              }
+              state.resetAuth();
+            }
+          } else if (state) {
+            console.log('✅ Store hydraté avec succès:', {
+              hasAdmin: !!state.admin,
+              hasToken: !!state.token,
+              timestamp: new Date().toISOString()
+            });
+            
+            // Forcer l'initialisation
+            state.isInitialized = true;
+            
+            if (state.admin && state.token) {
+              console.log('👤 Session restaurée:', state.admin.email);
+            } else {
+              console.log('📭 Aucune session active');
             }
           }
         };
