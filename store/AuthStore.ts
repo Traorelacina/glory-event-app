@@ -1,26 +1,22 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { LoginCredentials, LoginResponse, authApi } from '../services/api';
-
-export interface Admin {
-  id: number;
-  name: string;
-  email: string;
-  role: string;
-  role_label: string;
-}
+import { authLogin, authLogout, LoginCredentials, LoginResponse, Admin } from '../services/api-client';
 
 interface AuthState {
   admin: Admin | null;
   token: string | null;
   isLoading: boolean;
   error: string | null;
-  isHydrated: boolean; // Nouveau flag pour savoir si les données sont chargées
+  isInitialized: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
   logout: () => Promise<void>;
   clearError: () => void;
   setAdmin: (admin: Admin | null) => void;
   setToken: (token: string | null) => void;
+  checkAuth: () => boolean;
+  checkAuthAsync: () => Promise<boolean>;
+  resetAuth: () => void;
+  getAuthState: () => { admin: Admin | null; token: string | null };
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -30,80 +26,224 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       isLoading: false,
       error: null,
-      isHydrated: false,
+      isInitialized: false,
 
       login: async (credentials: LoginCredentials) => {
+        const { isLoading } = get();
+        if (isLoading) {
+          console.warn('⚠️ Tentative de connexion déjà en cours');
+          return;
+        }
+
         set({ isLoading: true, error: null });
+        
         try {
-          const response: LoginResponse = await authApi.login(credentials);
+          console.log('🔐 Tentative de connexion dans le store...');
           
-          // Mise à jour de l'état
+          // Utiliser la fonction séparée qui ne sera pas mal minifiée
+          const response: LoginResponse = await authLogin(credentials);
+          
+          console.log('📨 Réponse reçue:', response);
+          
+          if (!response.user || !response.token) {
+            throw new Error('Réponse invalide du serveur');
+          }
+
+          console.log('✅ Connexion réussie:', response.user.email);
+          
+          // Mise à jour SYNCHRONE et ATOMIQUE
           set({
             admin: response.user,
             token: response.token,
             isLoading: false,
             error: null,
-          });
-
-          // Attendre que la persistance soit terminée
-          await new Promise(resolve => setTimeout(resolve, 100));
-
-          // Vérifier que les données sont bien sauvegardées
-          const savedData = localStorage.getItem('auth-store');
-          if (!savedData) {
-            throw new Error('Échec de la sauvegarde des données');
-          }
-
-          console.log('Login successful, data persisted');
+            isInitialized: true,
+          }, true);
+          
+          console.log('💾 Session sauvegardée dans le store');
+          
         } catch (error: any) {
+          console.error('❌ Erreur de connexion dans le store:', error);
+          
+          let errorMessage = 'Erreur de connexion. Veuillez réessayer.';
+          
+          if (error.status === 401) {
+            errorMessage = 'Email ou mot de passe incorrect';
+          } else if (error.status === 403) {
+            errorMessage = 'Accès non autorisé';
+          } else if (error.status === 429) {
+            errorMessage = 'Trop de tentatives. Veuillez patienter.';
+          } else if (error.status >= 500) {
+            errorMessage = 'Erreur serveur. Veuillez réessayer plus tard.';
+          } else if (error.message) {
+            errorMessage = error.message;
+          } else if (!navigator.onLine) {
+            errorMessage = 'Pas de connexion Internet';
+          }
+          
           set({
             admin: null,
             token: null,
             isLoading: false,
-            error: error.message || 'Erreur de connexion',
-          });
+            error: errorMessage,
+            isInitialized: true,
+          }, true);
+          
+          // Relancer l'erreur pour que le composant puisse la catcher
           throw error;
         }
       },
 
       logout: async () => {
-        const token = get().token;
+        const { token } = get();
         
-        if (token) {
-          try {
-            await authApi.logout(token);
-          } catch (error) {
-            console.error('Erreur lors de la déconnexion:', error);
-          }
-        }
-
+        console.log('🚪 Déconnexion en cours...');
+        
+        // Réinitialisation IMMÉDIATE et SYNCHRONE
         set({
           admin: null,
           token: null,
           error: null,
           isLoading: false,
-        });
-
-        // Nettoyer le localStorage explicitement
-        localStorage.removeItem('auth-store');
+          isInitialized: true,
+        }, true);
+        
+        // Nettoyer le localStorage IMMÉDIATEMENT
+        try {
+          localStorage.removeItem('auth-store');
+          console.log('🧹 LocalStorage nettoyé');
+        } catch (e) {
+          console.error('Erreur nettoyage localStorage:', e);
+        }
+        
+        console.log('✅ State réinitialisé');
+        
+        // Appel API en arrière-plan
+        if (token) {
+          authLogout(token)
+            .then(() => console.log('✅ Déconnexion serveur réussie'))
+            .catch((error) => console.error('⚠️ Erreur logout serveur:', error));
+        }
       },
 
-      clearError: () => set({ error: null }),
-      setAdmin: (admin: Admin | null) => set({ admin }),
-      setToken: (token: string | null) => set({ token }),
+      clearError: () => {
+        set({ error: null });
+      },
+
+      setAdmin: (admin: Admin | null) => {
+        set({ admin });
+      },
+
+      setToken: (token: string | null) => {
+        set({ token });
+      },
+
+      checkAuth: (): boolean => {
+        const { admin, token } = get();
+        const isAuthenticated = !!(admin && token);
+        
+        console.log('🔍 Vérification auth:', { 
+          hasAdmin: !!admin, 
+          hasToken: !!token,
+          isAuthenticated 
+        });
+        
+        return isAuthenticated;
+      },
+
+      checkAuthAsync: async (): Promise<boolean> => {
+        return new Promise((resolve) => {
+          // Vérifier immédiatement
+          const { admin, token } = get();
+          const isAuthenticated = !!(admin && token);
+          
+          console.log('🔍 Vérification auth async:', { 
+            hasAdmin: !!admin, 
+            hasToken: !!token,
+            isAuthenticated 
+          });
+          
+          resolve(isAuthenticated);
+        });
+      },
+
+      getAuthState: () => {
+        const { admin, token } = get();
+        return { admin, token };
+      },
+
+      resetAuth: () => {
+        console.log('🔄 Réinitialisation complète du store');
+        
+        set({
+          admin: null,
+          token: null,
+          isLoading: false,
+          error: null,
+          isInitialized: true,
+        }, true);
+        
+        try {
+          localStorage.removeItem('auth-store');
+        } catch (e) {
+          console.error('Erreur lors du nettoyage:', e);
+        }
+      },
     }),
     {
       name: 'auth-store',
       storage: createJSONStorage(() => localStorage),
+      
       partialize: (state) => ({
         admin: state.admin,
         token: state.token,
       }),
-      onRehydrateStorage: () => (state) => {
-        // Marquer comme hydraté une fois la restauration terminée
-        if (state) {
-          state.isHydrated = true;
+      
+      onRehydrateStorage: () => {
+        console.log('💧 Début de l\'hydratation du store...');
+        
+        return (state, error) => {
+          if (error) {
+            console.error('❌ Erreur d\'hydratation:', error);
+            if (state) {
+              state.resetAuth();
+            }
+          } else if (state) {
+            console.log('✅ Store hydraté avec succès:', {
+              hasAdmin: !!state.admin,
+              hasToken: !!state.token,
+              timestamp: new Date().toISOString()
+            });
+            
+            // Forcer l'initialisation
+            state.isInitialized = true;
+            
+            if (state.admin && state.token) {
+              console.log('👤 Session restaurée:', state.admin.email);
+            } else {
+              console.log('📭 Aucune session active');
+            }
+          }
+        };
+      },
+      
+      version: 1,
+      
+      // AJOUTER CETTE FONCTION MIGRATE POUR CORRIGER L'ERREUR
+      migrate: (persistedState: any, version: number) => {
+        console.log(`🔄 Migration du store depuis la version ${version}`);
+        
+        if (version === 0) {
+          // Migration depuis la version 0
+          return {
+            ...persistedState,
+            isInitialized: true,
+            error: null,
+            isLoading: false,
+          };
         }
+        
+        return persistedState;
       },
     }
   )
