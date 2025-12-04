@@ -350,12 +350,7 @@ export default function AdminLoginPage() {
               transitionDelay: '600ms',
             }}
           >
-            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20">
-              <CheckCircle className="w-4 h-4 text-green-400" />
-              <span className="text-gray-300 text-sm font-medium">
-                Environnement: <span className="text-orange-400">Développement</span>
-              </span>
-            </div>
+            
           </div>
         </div>
 
