@@ -5,7 +5,7 @@ import { Mail, Lock, AlertCircle, Loader, Sparkles, CheckCircle, ArrowRight } fr
 
 export default function AdminLoginPage() {
   const navigate = useNavigate();
-  const { login, isLoading, error, clearError, admin, token } = useAuthStore();
+  const { login, isLoading, error, clearError, isInitialized, checkAuthAsync } = useAuthStore();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,34 +17,115 @@ export default function AdminLoginPage() {
   // Refs pour éviter les doubles actions
   const hasRedirected = useRef(false);
   const loginAttemptRef = useRef(false);
+  const navigationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const authCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // ==============================
-  // REDIRECTION AUTOMATIQUE
+  // REDIRECTION AUTOMATIQUE - CORRIGÉ
   // ==============================
   useEffect(() => {
-    const checkAuthentication = () => {
+    const checkAuthentication = async () => {
       // Empêcher les doubles redirections
       if (hasRedirected.current) {
+        console.log('⚠️ Redirection déjà en cours');
         return;
       }
 
-      const isAuthenticated = !!(admin && token);
-      
-      if (isAuthenticated && !hasRedirected.current) {
-        console.log('✅ Utilisateur authentifié, redirection vers le dashboard...');
-        hasRedirected.current = true;
+      try {
+        // Attendre que le store soit initialisé
+        if (!isInitialized) {
+          console.log('⏳ En attente de l\'initialisation du store...');
+          setIsCheckingAuth(true);
+          return;
+        }
+
+        console.log('🔍 Vérification de l\'authentification...');
+        const isAuthenticated = await checkAuthAsync();
         
-        // Petit délai pour s'assurer que tout est stable
-        setTimeout(() => {
+        if (isAuthenticated && !hasRedirected.current) {
+          console.log('✅ Utilisateur authentifié, redirection vers le dashboard...');
+          hasRedirected.current = true;
+          
+          // Annuler tous les timeouts
+          if (authCheckIntervalRef.current) {
+            clearInterval(authCheckIntervalRef.current);
+          }
+          
+          // Petit délai pour s'assurer que tout est stable
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          // Redirection
           navigate('/admin/dashboard', { replace: true });
-        }, 100);
+        } else if (!isAuthenticated) {
+          console.log('👤 Non authentifié, affichage du formulaire');
+        }
+      } catch (err) {
+        console.error('❌ Erreur lors de la vérification d\'authentification:', err);
+      } finally {
+        setIsCheckingAuth(false);
       }
-      
-      setIsCheckingAuth(false);
     };
 
+    // Vérifier immédiatement
     checkAuthentication();
-  }, [admin, token, navigate]);
+    
+    // Vérifier périodiquement (safety net pour les cas limites)
+    authCheckIntervalRef.current = setInterval(checkAuthentication, 500);
+    
+    return () => {
+      if (authCheckIntervalRef.current) {
+        clearInterval(authCheckIntervalRef.current);
+      }
+      if (navigationTimeoutRef.current) {
+        clearTimeout(navigationTimeoutRef.current);
+      }
+    };
+  }, [isInitialized, navigate, checkAuthAsync]);
+
+  // ==============================
+  // ÉCOUTEUR DU STORE POUR DÉTECTER LES CHANGEMENTS
+  // ==============================
+  useEffect(() => {
+    const unsubscribe = useAuthStore.subscribe(
+      (state) => ({
+        admin: state.admin,
+        token: state.token,
+      }),
+      (newState, prevState) => {
+        // Vérifier si l'authentification vient de changer
+        const wasAuthenticated = !!(prevState.admin && prevState.token);
+        const isNowAuthenticated = !!(newState.admin && newState.token);
+        
+        console.log('📡 Changement détecté dans le store:', {
+          wasAuthenticated,
+          isNowAuthenticated,
+          hasRedirected: hasRedirected.current
+        });
+        
+        if (!wasAuthenticated && isNowAuthenticated && !hasRedirected.current) {
+          console.log('🎯 Authentification détectée via subscribe, redirection...');
+          hasRedirected.current = true;
+          
+          // Petit délai pour laisser le temps au DOM
+          if (navigationTimeoutRef.current) {
+            clearTimeout(navigationTimeoutRef.current);
+          }
+          
+          navigationTimeoutRef.current = setTimeout(() => {
+            navigate('/admin/dashboard', { replace: true });
+          }, 100);
+        }
+      }
+    );
+    
+    return () => unsubscribe();
+  }, [navigate]);
+
+
+  console.log('🔧 Vérification imports:', {
+  useAuthStore: typeof useAuthStore,
+  login: typeof useAuthStore?.getState?.()?.login,
+});
 
   // ==============================
   // EFFET PARALLAX
@@ -67,7 +148,7 @@ export default function AdminLoginPage() {
   }, []);
 
   // ==============================
-  // GESTION DE LA SOUMISSION
+  // GESTION DE LA SOUMISSION - CORRIGÉ
   // ==============================
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,9 +186,43 @@ export default function AdminLoginPage() {
         password: password.trim() 
       });
 
-      console.log('✅ Login réussi');
+      console.log('✅ Login réussi, vérification de l\'état...');
       
-      // La redirection se fera automatiquement via l'effet useEffect
+      // Attendre que le state soit mis à jour
+      // Vérifier plusieurs fois avec un timeout maximum
+      const maxAttempts = 20; // Augmenté pour plus de sécurité
+      const checkInterval = 50; // ms (réduit pour plus de réactivité)
+      
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        const isAuthenticated = await checkAuthAsync();
+        
+        if (isAuthenticated) {
+          console.log(`✅ Authentification confirmée (tentative ${attempt + 1}/${maxAttempts})`);
+          
+          if (!hasRedirected.current) {
+            hasRedirected.current = true;
+            
+            // Petit délai pour s'assurer que le store est bien mis à jour
+            await new Promise(resolve => setTimeout(resolve, 50));
+            
+            // Redirection immédiate
+            navigate('/admin/dashboard', { replace: true });
+            return;
+          }
+        } else {
+          console.log(`⏳ Authentification non confirmée (tentative ${attempt + 1}/${maxAttempts})`);
+        }
+        
+        // Attendre un peu avant de réessayer
+        await new Promise(resolve => setTimeout(resolve, checkInterval));
+      }
+      
+      // Si on arrive ici, l'authentification n'a pas été confirmée
+      console.error('❌ Timeout - état non mis à jour après login');
+      setLocalError('Connexion réussie mais redirection bloquée. Veuillez rafraîchir la page.');
+      
+      // Réinitialiser le flag pour permettre une nouvelle tentative
+      loginAttemptRef.current = false;
       
     } catch (err: any) {
       console.error('❌ Erreur de connexion:', err);
@@ -129,6 +244,14 @@ export default function AdminLoginPage() {
   // ==============================
   useEffect(() => {
     return () => {
+      // Nettoyer les timeouts
+      if (authCheckIntervalRef.current) {
+        clearInterval(authCheckIntervalRef.current);
+      }
+      if (navigationTimeoutRef.current) {
+        clearTimeout(navigationTimeoutRef.current);
+      }
+      
       // Réinitialiser les flags
       hasRedirected.current = false;
       loginAttemptRef.current = false;
@@ -241,6 +364,15 @@ export default function AdminLoginPage() {
                 <p className="text-red-100 text-sm font-medium">{displayError}</p>
               </div>
             )}
+
+            {/* Debug info (optionnel, à enlever en production) */}
+            <div className="mb-4 p-3 bg-blue-500/10 backdrop-blur-sm border border-blue-400/30 rounded-lg hidden">
+              <p className="text-blue-200 text-xs font-mono">
+                Store initialisé: {isInitialized ? '✅' : '⏳'} | 
+                Tentative en cours: {loginAttemptRef.current ? '✅' : '❌'} | 
+                Redirigé: {hasRedirected.current ? '✅' : '❌'}
+              </p>
+            </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Champ Email */}
