@@ -12,17 +12,34 @@ export default function AdminLoginPage() {
   const [localError, setLocalError] = useState<string | null>(null);
   const [scrollY, setScrollY] = useState(0);
   const [hasAnimated, setHasAnimated] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Ref pour éviter les doubles redirections
+  // Refs pour éviter les doubles soumissions/redirections
   const hasRedirected = useRef(false);
+  const isLoginInProgress = useRef(false);
 
-  // Redirection unique quand admin + token sont présents
+  // Redirection unique et robuste
   useEffect(() => {
-    if (admin && token && !hasRedirected.current) {
+    // Vérifier si admin ET token sont présents et valides
+    if (admin && token && !hasRedirected.current && !isLoginInProgress.current) {
       hasRedirected.current = true;
-      navigate('/admin/dashboard', { replace: true });
+      
+      // Petit délai pour s'assurer que le state est complètement stabilisé
+      const redirectTimer = setTimeout(() => {
+        navigate('/admin/dashboard', { replace: true });
+      }, 100);
+
+      return () => clearTimeout(redirectTimer);
     }
   }, [admin, token, navigate]);
+
+  // Réinitialiser les refs quand on revient sur la page
+  useEffect(() => {
+    return () => {
+      hasRedirected.current = false;
+      isLoginInProgress.current = false;
+    };
+  }, []);
 
   // Effet parallax
   useEffect(() => {
@@ -40,25 +57,58 @@ export default function AdminLoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Empêcher soumissions multiples
-    if (isLoading) return;
-
-    setLocalError(null);
-    clearError();
+    // Empêcher toute soumission multiple
+    if (isLoading || isSubmitting || isLoginInProgress.current) {
+      console.log('Soumission bloquée - déjà en cours');
+      return;
+    }
 
     // Validation
-    if (!email || !password) {
+    if (!email.trim() || !password.trim()) {
       setLocalError('Veuillez remplir tous les champs');
       return;
     }
 
+    // Validation email basique
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      setLocalError('Veuillez entrer une adresse email valide');
+      return;
+    }
+
+    // Marquer la soumission comme en cours
+    isLoginInProgress.current = true;
+    setIsSubmitting(true);
+    setLocalError(null);
+    clearError();
+
     try {
-      // Le login met à jour admin et token dans le store
-      await login({ email, password });
+      console.log('Tentative de connexion...');
+      
+      // Appel de login qui met à jour le store de manière atomique
+      await login({ 
+        email: email.trim(), 
+        password: password.trim() 
+      });
+
+      console.log('Connexion réussie');
+      
       // La redirection se fera automatiquement via useEffect
+      // quand admin et token seront mis à jour dans le store
+      
     } catch (err: any) {
-      console.error('Login error:', err);
-      setLocalError(err.message || 'Erreur de connexion');
+      console.error('Erreur de connexion:', err);
+      
+      // Réinitialiser les flags en cas d'erreur
+      isLoginInProgress.current = false;
+      setIsSubmitting(false);
+      
+      // Afficher l'erreur
+      const errorMessage = err.message || err.response?.data?.message || 'Erreur de connexion. Veuillez réessayer.';
+      setLocalError(errorMessage);
+      
+      // Nettoyer le mot de passe en cas d'erreur
+      setPassword('');
     }
   };
 
@@ -151,9 +201,9 @@ export default function AdminLoginPage() {
           >
             {/* Message d'erreur */}
             {displayError && (
-              <div className="mb-6 p-4 bg-orange-500/20 backdrop-blur-sm border-2 border-orange-400/50 rounded-xl flex gap-3 animate-shake">
-                <AlertCircle className="text-orange-400 flex-shrink-0 mt-0.5" size={20} />
-                <p className="text-orange-100 text-sm font-medium">{displayError}</p>
+              <div className="mb-6 p-4 bg-red-500/20 backdrop-blur-sm border-2 border-red-400/50 rounded-xl flex gap-3 animate-shake">
+                <AlertCircle className="text-red-400 flex-shrink-0 mt-0.5" size={20} />
+                <p className="text-red-100 text-sm font-medium">{displayError}</p>
               </div>
             )}
 
@@ -181,8 +231,9 @@ export default function AdminLoginPage() {
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="admin@example.com"
                       className="w-full pl-12 pr-4 py-3.5 bg-white/5 backdrop-blur-sm border-2 border-white/20 rounded-xl text-white placeholder-gray-300 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-400/30 transition-all duration-300"
-                      disabled={isLoading}
+                      disabled={isLoading || isSubmitting}
                       autoComplete="email"
+                      required
                     />
                   </div>
                 </div>
@@ -211,8 +262,9 @@ export default function AdminLoginPage() {
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
                       className="w-full pl-12 pr-4 py-3.5 bg-white/5 backdrop-blur-sm border-2 border-white/20 rounded-xl text-white placeholder-gray-300 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30 transition-all duration-300"
-                      disabled={isLoading}
+                      disabled={isLoading || isSubmitting}
                       autoComplete="current-password"
+                      required
                     />
                   </div>
                 </div>
@@ -221,11 +273,11 @@ export default function AdminLoginPage() {
               {/* Bouton de connexion */}
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || isSubmitting}
                 className="w-full group relative bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] hover:from-[#EC4899] hover:to-[#8B5CF6] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3.5 rounded-xl transition-all duration-500 transform hover:-translate-y-1 hover:shadow-2xl hover:shadow-purple-500/50 disabled:hover:transform-none disabled:hover:shadow-none flex items-center justify-center gap-3 overflow-hidden"
               >
                 <span className="absolute inset-0 bg-gradient-to-r from-[#EC4899] to-[#8B5CF6] translate-x-full group-hover:translate-x-0 transition-transform duration-300"></span>
-                {isLoading ? (
+                {(isLoading || isSubmitting) ? (
                   <>
                     <Loader className="relative z-10 animate-spin" size={20} />
                     <span className="relative z-10">Connexion en cours...</span>
