@@ -241,11 +241,7 @@ export default function BoutiquePage({ onNavigate }: BoutiquePageProps) {
             </div>
           ) : (
             <>
-              {/* INFO DEBUG */}
-              <div className="mb-6 p-4 bg-blue-50 rounded-xl text-sm text-blue-700">
-                <p><strong>API:</strong> {API_URL}</p>
-                <p><strong>Produits chargés:</strong> {filteredProducts.length}</p>
-              </div>
+              
 
               {/* GRID PRODUITS */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 mb-16">
