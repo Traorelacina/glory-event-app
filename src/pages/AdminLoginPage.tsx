@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/AuthStore';
-import { Mail, Lock, AlertCircle, Loader, Sparkles, Star, CheckCircle, ArrowRight } from 'lucide-react';
+import { Mail, Lock, AlertCircle, Loader, Sparkles, CheckCircle, ArrowRight } from 'lucide-react';
 
 export default function AdminLoginPage() {
   const navigate = useNavigate();
@@ -11,8 +11,7 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
   const [scrollY, setScrollY] = useState(0);
-  const [isVisible, setIsVisible] = useState<{ [key: string]: boolean }>({});
-  const observerRef = useRef<IntersectionObserver | null>(null);
+  const [hasAnimated, setHasAnimated] = useState(false);
 
   // Rediriger si déjà connecté
   useEffect(() => {
@@ -29,24 +28,12 @@ export default function AdminLoginPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Intersection Observer pour les animations
+  // Animation initiale une seule fois
   useEffect(() => {
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setIsVisible((prev) => ({ ...prev, [entry.target.id]: true }));
-          }
-        });
-      },
-      { threshold: 0.1 }
-    );
-
-    document.querySelectorAll('[data-animate]').forEach((el) => {
-      if (observerRef.current) observerRef.current.observe(el);
-    });
-
-    return () => observerRef.current?.disconnect();
+    const timer = setTimeout(() => {
+      setHasAnimated(true);
+    }, 100);
+    return () => clearTimeout(timer);
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -142,14 +129,12 @@ export default function AdminLoginPage() {
 
         {/* Contenu principal */}
         <div className="relative z-10 w-full max-w-md mx-4">
+          {/* Header */}
           <div 
-            id="login-header"
-            data-animate
-            className="text-center mb-8"
+            className="text-center mb-8 transition-all duration-800 ease-out"
             style={{
-              opacity: isVisible['login-header'] ? 1 : 0,
-              transform: isVisible['login-header'] ? 'translateY(0)' : 'translateY(30px)',
-              transition: 'all 0.8s ease-out',
+              opacity: hasAnimated ? 1 : 0,
+              transform: hasAnimated ? 'translateY(0)' : 'translateY(30px)',
             }}
           >
             <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-6 py-3 rounded-full border border-white/20 mb-6">
@@ -171,26 +156,16 @@ export default function AdminLoginPage() {
 
           {/* Carte de connexion */}
           <div 
-            id="login-card"
-            data-animate
             className="bg-white/10 backdrop-blur-md rounded-2xl shadow-2xl p-8 border border-white/20 hover:border-white/30 transition-all duration-500"
             style={{
-              opacity: isVisible['login-card'] ? 1 : 0,
-              transform: isVisible['login-card'] ? 'translateY(0) scale(1)' : 'translateY(30px) scale(0.95)',
-              transition: 'all 0.6s ease-out 0.2s',
+              opacity: hasAnimated ? 1 : 0,
+              transform: hasAnimated ? 'translateY(0) scale(1)' : 'translateY(30px) scale(0.95)',
+              transitionDelay: '200ms',
             }}
           >
+            {/* Message d'erreur */}
             {displayError && (
-              <div 
-                id="error-message"
-                data-animate
-                className="mb-6 p-4 bg-orange-500/20 backdrop-blur-sm border-2 border-orange-400/50 rounded-xl flex gap-3"
-                style={{
-                  opacity: isVisible['error-message'] ? 1 : 0,
-                  transform: isVisible['error-message'] ? 'translateY(0)' : 'translateY(20px)',
-                  transition: 'all 0.4s ease-out',
-                }}
-              >
+              <div className="mb-6 p-4 bg-orange-500/20 backdrop-blur-sm border-2 border-orange-400/50 rounded-xl flex gap-3 animate-shake">
                 <AlertCircle className="text-orange-400 flex-shrink-0 mt-0.5" size={20} />
                 <p className="text-orange-100 text-sm font-medium">{displayError}</p>
               </div>
@@ -199,12 +174,11 @@ export default function AdminLoginPage() {
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Champ Email */}
               <div
-                id="email-field"
-                data-animate
+                className="transition-all duration-600 ease-out"
                 style={{
-                  opacity: isVisible['email-field'] ? 1 : 0,
-                  transform: isVisible['email-field'] ? 'translateX(0)' : 'translateX(-20px)',
-                  transition: 'all 0.6s ease-out 0.3s',
+                  opacity: hasAnimated ? 1 : 0,
+                  transform: hasAnimated ? 'translateX(0)' : 'translateX(-20px)',
+                  transitionDelay: '300ms',
                 }}
               >
                 <label htmlFor="email" className="block text-sm font-medium text-white mb-3">
@@ -222,6 +196,7 @@ export default function AdminLoginPage() {
                       placeholder="admin@example.com"
                       className="w-full pl-12 pr-4 py-3.5 bg-white/5 backdrop-blur-sm border-2 border-white/20 rounded-xl text-white placeholder-gray-300 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-400/30 transition-all duration-300"
                       disabled={isLoading}
+                      autoComplete="email"
                     />
                   </div>
                 </div>
@@ -229,12 +204,11 @@ export default function AdminLoginPage() {
 
               {/* Champ Mot de passe */}
               <div
-                id="password-field"
-                data-animate
+                className="transition-all duration-600 ease-out"
                 style={{
-                  opacity: isVisible['password-field'] ? 1 : 0,
-                  transform: isVisible['password-field'] ? 'translateX(0)' : 'translateX(-20px)',
-                  transition: 'all 0.6s ease-out 0.4s',
+                  opacity: hasAnimated ? 1 : 0,
+                  transform: hasAnimated ? 'translateX(0)' : 'translateX(-20px)',
+                  transitionDelay: '400ms',
                 }}
               >
                 <label htmlFor="password" className="block text-sm font-medium text-white mb-3">
@@ -252,6 +226,7 @@ export default function AdminLoginPage() {
                       placeholder="••••••••"
                       className="w-full pl-12 pr-4 py-3.5 bg-white/5 backdrop-blur-sm border-2 border-white/20 rounded-xl text-white placeholder-gray-300 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30 transition-all duration-300"
                       disabled={isLoading}
+                      autoComplete="current-password"
                     />
                   </div>
                 </div>
@@ -261,7 +236,7 @@ export default function AdminLoginPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full group relative bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] hover:from-[#EC4899] hover:to-[#8B5CF6] disabled:opacity-50 text-white font-semibold py-3.5 rounded-xl transition-all duration-500 transform hover:-translate-y-1 hover:shadow-2xl hover:shadow-purple-500/50 flex items-center justify-center gap-3 overflow-hidden"
+                className="w-full group relative bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] hover:from-[#EC4899] hover:to-[#8B5CF6] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3.5 rounded-xl transition-all duration-500 transform hover:-translate-y-1 hover:shadow-2xl hover:shadow-purple-500/50 disabled:hover:transform-none disabled:hover:shadow-none flex items-center justify-center gap-3 overflow-hidden"
               >
                 <span className="absolute inset-0 bg-gradient-to-r from-[#EC4899] to-[#8B5CF6] translate-x-full group-hover:translate-x-0 transition-transform duration-300"></span>
                 {isLoading ? (
@@ -281,13 +256,11 @@ export default function AdminLoginPage() {
 
             {/* Lien support */}
             <div 
-              id="support-link"
-              data-animate
-              className="mt-8 text-center"
+              className="mt-8 text-center transition-all duration-600 ease-out"
               style={{
-                opacity: isVisible['support-link'] ? 1 : 0,
-                transform: isVisible['support-link'] ? 'translateY(0)' : 'translateY(20px)',
-                transition: 'all 0.6s ease-out 0.5s',
+                opacity: hasAnimated ? 1 : 0,
+                transform: hasAnimated ? 'translateY(0)' : 'translateY(20px)',
+                transitionDelay: '500ms',
               }}
             >
               <p className="text-gray-300 text-sm">
@@ -301,13 +274,11 @@ export default function AdminLoginPage() {
 
           {/* Informations environnement */}
           <div 
-            id="environment-info"
-            data-animate
-            className="mt-8 text-center"
+            className="mt-8 text-center transition-all duration-600 ease-out"
             style={{
-              opacity: isVisible['environment-info'] ? 1 : 0,
-              transform: isVisible['environment-info'] ? 'translateY(0)' : 'translateY(20px)',
-              transition: 'all 0.6s ease-out 0.6s',
+              opacity: hasAnimated ? 1 : 0,
+              transform: hasAnimated ? 'translateY(0)' : 'translateY(20px)',
+              transitionDelay: '600ms',
             }}
           >
             <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20">
@@ -321,7 +292,7 @@ export default function AdminLoginPage() {
 
         {/* Scroll indicator */}
         <div 
-          className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce cursor-pointer"
+          className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce cursor-pointer opacity-70 hover:opacity-100 transition-opacity"
           onClick={() => window.scrollTo({ top: window.innerHeight, behavior: 'smooth' })}
         >
           <div className="flex flex-col items-center gap-2 hover:scale-110 transition-transform">
@@ -332,7 +303,7 @@ export default function AdminLoginPage() {
       </section>
 
       {/* Animations CSS */}
-      <style jsx>{`
+      <style>{`
         @keyframes float {
           0%, 100% { 
             transform: translateY(0) translateX(0); 
@@ -348,15 +319,14 @@ export default function AdminLoginPage() {
           }
         }
         
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+          20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+
+        .animate-shake {
+          animation: shake 0.5s ease-in-out;
         }
       `}</style>
     </div>
