@@ -91,12 +91,6 @@ export const useAuthStore = create<AuthState>()(
         admin: state.admin,
         token: state.token,
       }),
-      // Options pour optimiser la performance
-      version: 1,
-      migrate: (persistedState: any, version: number) => {
-        // Migration si besoin dans le futur
-        return persistedState;
-      },
     }
   )
 );
