@@ -14,13 +14,15 @@ export default function AdminLoginPage() {
   const [hasAnimated, setHasAnimated] = useState(false);
 
   // ==============================
-  // REDIRECTION AUTOMATIQUE SIMPLIFIÉE
+  // REDIRECTION AUTOMATIQUE
   // ==============================
   useEffect(() => {
-    // Si l'utilisateur est déjà authentifié, rediriger
     if (admin && token) {
-      console.log('✅ Utilisateur déjà authentifié, redirection...');
-      navigate('/admin/dashboard', { replace: true });
+      console.log('✅ Utilisateur authentifié, redirection...');
+      const timer = setTimeout(() => {
+        navigate('/admin/dashboard', { replace: true });
+      }, 100);
+      return () => clearTimeout(timer);
     }
   }, [admin, token, navigate]);
 
@@ -49,13 +51,11 @@ export default function AdminLoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validation des champs
     if (!email.trim() || !password.trim()) {
       setLocalError('Veuillez remplir tous les champs');
       return;
     }
 
-    // Validation email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
       setLocalError('Veuillez entrer une adresse email valide');
@@ -73,9 +73,7 @@ export default function AdminLoginPage() {
         password: password.trim() 
       });
 
-      console.log('✅ Login réussi, redirection...');
-      
-      // La redirection se fera automatiquement via l'effet ci-dessus
+      console.log('✅ Login réussi');
       
     } catch (err: any) {
       console.error('❌ Erreur de connexion:', err);
