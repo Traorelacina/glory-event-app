@@ -46,9 +46,17 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null });
         
         try {
-          console.log('🔐 Tentative de connexion...');
+          console.log('🔐 Tentative de connexion...', credentials);
+          
+          // IMPORTANT: Utiliser authApi.login directement
+          // Vérifier que authApi est défini
+          if (!authApi || typeof authApi.login !== 'function') {
+            throw new Error('Service d\'authentification non disponible');
+          }
           
           const response: LoginResponse = await authApi.login(credentials);
+          
+          console.log('📨 Réponse API:', response);
           
           if (!response.user || !response.token) {
             throw new Error('Réponse invalide du serveur');
@@ -63,12 +71,19 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
             error: null,
             isInitialized: true,
-          }, true); // Le "true" force une mise à jour synchrone
+          }, true);
           
-          console.log('💾 Session sauvegardée');
+          console.log('💾 Session sauvegardée dans le store');
           
           // Forcer l'écriture dans localStorage
-          await new Promise(resolve => setTimeout(resolve, 0));
+          setTimeout(() => {
+            try {
+              const stored = localStorage.getItem('auth-store');
+              console.log('💾 Vérification localStorage:', stored ? 'présent' : 'absent');
+            } catch (e) {
+              console.error('Erreur vérification localStorage:', e);
+            }
+          }, 0);
           
         } catch (error: any) {
           console.error('❌ Erreur de connexion:', error);
@@ -97,6 +112,7 @@ export const useAuthStore = create<AuthState>()(
             isInitialized: true,
           }, true);
           
+          // Relancer l'erreur pour que le composant puisse la catcher
           throw error;
         }
       },
@@ -113,7 +129,7 @@ export const useAuthStore = create<AuthState>()(
           error: null,
           isLoading: false,
           isInitialized: true,
-        }, true); // Force la mise à jour synchrone
+        }, true);
         
         // Nettoyer le localStorage IMMÉDIATEMENT
         try {
@@ -126,7 +142,7 @@ export const useAuthStore = create<AuthState>()(
         console.log('✅ State réinitialisé');
         
         // Appel API en arrière-plan
-        if (token) {
+        if (token && authApi && typeof authApi.logout === 'function') {
           authApi.logout(token)
             .then(() => console.log('✅ Déconnexion serveur réussie'))
             .catch((error) => console.error('⚠️ Erreur logout serveur:', error));
