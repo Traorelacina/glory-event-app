@@ -121,6 +121,12 @@ export default function AdminLoginPage() {
     return () => unsubscribe();
   }, [navigate]);
 
+
+  console.log('🔧 Vérification imports:', {
+  useAuthStore: typeof useAuthStore,
+  login: typeof useAuthStore?.getState?.()?.login,
+});
+
   // ==============================
   // EFFET PARALLAX
   // ==============================
