@@ -17,13 +17,18 @@ export default function AdminLoginPage() {
   const hasRedirected = useRef(false);
 
   // ==============================
-  // REDIRECTION AUTOMATIQUE - SIMPLE ET EFFICACE
+  // REDIRECTION AUTOMATIQUE - AVEC DÉLAI
   // ==============================
   useEffect(() => {
     if (admin && token && !hasRedirected.current) {
-      console.log('✅ Utilisateur authentifié, redirection...');
+      console.log('✅ Utilisateur authentifié, préparation de la redirection...');
       hasRedirected.current = true;
-      navigate('/admin/dashboard', { replace: true });
+      
+      // Petit délai pour permettre au store de se synchroniser
+      setTimeout(() => {
+        console.log('🚀 Redirection vers le dashboard...');
+        navigate('/admin/dashboard', { replace: true });
+      }, 300);
     }
   }, [admin, token, navigate]);
 
