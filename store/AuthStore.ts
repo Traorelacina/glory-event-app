@@ -7,6 +7,8 @@ interface AuthState {
   token: string | null;
   isLoading: boolean;
   error: string | null;
+  _hasHydrated: boolean; // ✅ Nouveau flag
+  setHasHydrated: (state: boolean) => void; // ✅ Setter
   login: (credentials: LoginCredentials) => Promise<void>;
   logout: () => Promise<void>;
   clearError: () => void;
@@ -19,6 +21,11 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       isLoading: false,
       error: null,
+      _hasHydrated: false, // ✅ État initial
+
+      setHasHydrated: (state: boolean) => {
+        set({ _hasHydrated: state });
+      },
 
       login: async (credentials: LoginCredentials) => {
         const { isLoading } = get();
@@ -49,6 +56,9 @@ export const useAuthStore = create<AuthState>()(
           });
           
           console.log('💾 Session sauvegardée');
+          
+          // ✅ Attendre que le localStorage soit synchronisé
+          await new Promise(resolve => setTimeout(resolve, 100));
           
         } catch (error: any) {
           console.error('❌ Erreur de connexion:', error);
@@ -123,20 +133,26 @@ export const useAuthStore = create<AuthState>()(
       }),
       
       onRehydrateStorage: () => {
-        console.log('💧 Hydratation du store...');
+        console.log('💧 Début de l'hydratation du store...');
         
         return (state, error) => {
           if (error) {
             console.error('❌ Erreur hydratation:', error);
+            state?.setHasHydrated(true);
           } else if (state) {
-            console.log('✅ Store hydraté:', {
+            console.log('✅ Store hydraté avec succès:', {
               hasAdmin: !!state.admin,
               hasToken: !!state.token
             });
             
             if (state.admin && state.token) {
               console.log('👤 Session active:', state.admin.email);
+            } else {
+              console.log('📭 Aucune session active');
             }
+            
+            // ✅ Marquer comme hydraté
+            state.setHasHydrated(true);
           }
         };
       },
