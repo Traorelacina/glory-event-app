@@ -32,7 +32,7 @@ interface DashboardStats {
 
 export default function AdminDashboardPage() {
   const navigate = useNavigate();
-  const { token } = useAuthStore();
+  const { token, admin } = useAuthStore();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [viewStats, setViewStats] = useState<ViewStatistics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -40,20 +40,43 @@ export default function AdminDashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [scrollY, setScrollY] = useState(0);
   const [isVisible, setIsVisible] = useState<{ [key: string]: boolean }>({});
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
 
+  // ==============================
+  // VÉRIFICATION AUTH AU MONTAGE
+  // ==============================
   useEffect(() => {
-    if (!token) {
-      navigate('/admin/login');
+    console.log('📊 Dashboard - Vérification auth:', { hasToken: !!token, hasAdmin: !!admin });
+    
+    if (!token || !admin) {
+      console.log('⚠️ Non authentifié, redirection vers login...');
+      navigate('/admin/login', { replace: true });
+      return;
+    }
+    
+    console.log('✅ Authentifié, chargement du dashboard...');
+    setIsAuthChecking(false);
+  }, [token, admin, navigate]);
+
+  // ==============================
+  // CHARGEMENT DES DONNÉES
+  // ==============================
+  useEffect(() => {
+    // Ne charger que si authentifié
+    if (!token || isAuthChecking) {
       return;
     }
 
     const fetchDashboard = async () => {
       try {
         setLoading(true);
+        console.log('📥 Chargement des stats du dashboard...');
         const response = await adminApi.getDashboard(token);
         setStats(response.data);
         setError(null);
+        console.log('✅ Stats chargées:', response.data);
       } catch (err: any) {
+        console.error('❌ Erreur chargement dashboard:', err);
         setError(err.message || 'Erreur lors du chargement du dashboard');
       } finally {
         setLoading(false);
@@ -63,11 +86,12 @@ export default function AdminDashboardPage() {
     const fetchViewStatistics = async () => {
       try {
         setStatsLoading(true);
+        console.log('📥 Chargement des statistiques de vues...');
         const statistics = await statisticsService.getStatistics(token);
-        console.log('📊 Données statistiques reçues:', statistics);
+        console.log('✅ Statistiques de vues chargées:', statistics);
         setViewStats(statistics);
       } catch (err: any) {
-        console.error('Erreur lors du chargement des statistiques de vues:', err);
+        console.error('❌ Erreur stats vues:', err);
       } finally {
         setStatsLoading(false);
       }
@@ -75,7 +99,7 @@ export default function AdminDashboardPage() {
 
     fetchDashboard();
     fetchViewStatistics();
-  }, [token, navigate]);
+  }, [token, isAuthChecking]);
 
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
@@ -101,6 +125,19 @@ export default function AdminDashboardPage() {
 
     return () => observer.disconnect();
   }, [stats, viewStats]);
+
+  // Afficher un loader pendant la vérification auth
+  if (isAuthChecking) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-purple-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader className="w-16 h-16 text-purple-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-700 text-lg font-semibold">Chargement du tableau de bord...</p>
+          <p className="text-gray-500 text-sm mt-2">Vérification de votre session</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <AdminLayout>
@@ -157,7 +194,7 @@ export default function AdminDashboardPage() {
                   className="text-purple-100 text-lg md:text-xl"
                   style={{ animation: 'fadeInUp 1s ease-out 0.4s both' }}
                 >
-                  Vue d'ensemble de votre plateforme événementielle
+                  Bienvenue {admin?.name || 'Admin'} - Vue d'ensemble de votre plateforme
                 </p>
               </div>
               
