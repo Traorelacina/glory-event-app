@@ -1,12 +1,13 @@
+
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/AuthStore';
 import { adminApi } from '../../services/api';
 import { statisticsService } from '../../services/statisticsService';
 import { 
-  Loader, AlertCircle, Briefcase, Package, ShoppingCart, Clock, 
-  Mail, Image, TrendingUp, Activity, Sparkles, Star, ArrowRight,
-  Eye, Calendar, BarChart3, Users, Target
+  Loader, AlertCircle, Package, ShoppingCart, Clock, 
+  Mail, TrendingUp, Activity, Sparkles, Star, ArrowRight,
+  Eye, Calendar, BarChart3
 } from 'lucide-react';
 import AdminLayout from '../components/AdminLayout';
 import { Chart, Bars, Transform, Layer, Ticks, Labels } from 'rumble-charts';
@@ -32,7 +33,7 @@ interface DashboardStats {
 
 export default function AdminDashboardPage() {
   const navigate = useNavigate();
-  const { token, admin } = useAuthStore();
+  const { token, admin, _hasHydrated } = useAuthStore();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [viewStats, setViewStats] = useState<ViewStatistics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -40,13 +41,21 @@ export default function AdminDashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [scrollY, setScrollY] = useState(0);
   const [isVisible, setIsVisible] = useState<{ [key: string]: boolean }>({});
-  const [isAuthChecking, setIsAuthChecking] = useState(true);
 
   // ==============================
-  // VÉRIFICATION AUTH AU MONTAGE
+  // VÉRIFICATION AUTH - ATTENDRE L'HYDRATATION
   // ==============================
   useEffect(() => {
-    console.log('📊 Dashboard - Vérification auth:', { hasToken: !!token, hasAdmin: !!admin });
+    if (!_hasHydrated) {
+      console.log('⏳ En attente de l\'hydratation du store...');
+      return;
+    }
+
+    console.log('📊 Dashboard - Vérification auth:', { 
+      hasToken: !!token, 
+      hasAdmin: !!admin,
+      hydrated: _hasHydrated 
+    });
     
     if (!token || !admin) {
       console.log('⚠️ Non authentifié, redirection vers login...');
@@ -55,15 +64,13 @@ export default function AdminDashboardPage() {
     }
     
     console.log('✅ Authentifié, chargement du dashboard...');
-    setIsAuthChecking(false);
-  }, [token, admin, navigate]);
+  }, [token, admin, _hasHydrated, navigate]);
 
   // ==============================
   // CHARGEMENT DES DONNÉES
   // ==============================
   useEffect(() => {
-    // Ne charger que si authentifié
-    if (!token || isAuthChecking) {
+    if (!_hasHydrated || !token || !admin) {
       return;
     }
 
@@ -99,7 +106,7 @@ export default function AdminDashboardPage() {
 
     fetchDashboard();
     fetchViewStatistics();
-  }, [token, isAuthChecking]);
+  }, [token, admin, _hasHydrated]);
 
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
@@ -126,14 +133,13 @@ export default function AdminDashboardPage() {
     return () => observer.disconnect();
   }, [stats, viewStats]);
 
-  // Afficher un loader pendant la vérification auth
-  if (isAuthChecking) {
+  if (!_hasHydrated) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-purple-50 flex items-center justify-center">
         <div className="text-center">
           <Loader className="w-16 h-16 text-purple-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-700 text-lg font-semibold">Chargement du tableau de bord...</p>
-          <p className="text-gray-500 text-sm mt-2">Vérification de votre session</p>
+          <p className="text-gray-700 text-lg font-semibold">Initialisation...</p>
+          <p className="text-gray-500 text-sm mt-2">Chargement de votre session</p>
         </div>
       </div>
     );
@@ -232,7 +238,7 @@ export default function AdminDashboardPage() {
           </div>
         ) : stats ? (
           <>
-            {/* Main Stats Grid - Avec statistiques de vues */}
+            {/* Main Stats Grid */}
             <div 
               id="stats-grid"
               data-animate
@@ -243,7 +249,6 @@ export default function AdminDashboardPage() {
                 transition: 'all 0.8s ease-out',
               }}
             >
-              {/* Statistiques de vues */}
               <StatCard 
                 label="Vues Total" 
                 value={viewStats?.total_views || 0} 
@@ -268,7 +273,6 @@ export default function AdminDashboardPage() {
                 subtitle="Ce mois-ci"
                 loading={statsLoading}
               />
-           
               <StatCard 
                 label="Produits" 
                 value={stats.total_produits} 
@@ -300,7 +304,7 @@ export default function AdminDashboardPage() {
               />
             </div>
 
-            {/* Section Graphique Principal */}
+            {/* Graphique 7 derniers jours */}
             <div 
               id="analytics-section"
               data-animate
@@ -311,7 +315,6 @@ export default function AdminDashboardPage() {
                 transition: 'all 0.8s ease-out 0.3s',
               }}
             >
-              {/* Graphique des vues des 7 derniers jours - Pleine largeur */}
               <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl p-8 border border-purple-100">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-blue-500 rounded-xl flex items-center justify-center shadow-lg">
@@ -326,7 +329,7 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
-            {/* Section Graphique Mensuel */}
+            {/* Graphique mensuel */}
             <div 
               id="monthly-stats"
               data-animate
@@ -351,7 +354,7 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
-            {/* Section Détails des Statistiques */}
+            {/* Section détaillée */}
             <div 
               id="detailed-stats"
               data-animate
@@ -362,7 +365,6 @@ export default function AdminDashboardPage() {
                 transition: 'all 0.8s ease-out 0.4s',
               }}
             >
-              {/* Détails des vues par page */}
               <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl p-8 border border-purple-100">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg">
@@ -373,7 +375,6 @@ export default function AdminDashboardPage() {
                 <PageViewsChart data={viewStats?.page_views || []} loading={statsLoading} />
               </div>
 
-              {/* Statistiques récentes */}
               <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl p-8 border border-purple-100">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg">
@@ -385,7 +386,7 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
-            {/* Quick Actions Section */}
+            {/* Actions rapides */}
             <div 
               id="quick-actions"
               data-animate
@@ -432,59 +433,30 @@ export default function AdminDashboardPage() {
         ) : null}
       </div>
 
-      {/* Animations CSS */}
       <style jsx>{`
         @keyframes float {
-          0%, 100% { 
-            transform: translateY(0) translateX(0); 
-          }
-          25% { 
-            transform: translateY(-20px) translateX(10px); 
-          }
-          50% { 
-            transform: translateY(-10px) translateX(-10px); 
-          }
-          75% { 
-            transform: translateY(-15px) translateX(5px); 
-          }
+          0%, 100% { transform: translateY(0) translateX(0); }
+          25% { transform: translateY(-20px) translateX(10px); }
+          50% { transform: translateY(-10px) translateX(-10px); }
+          75% { transform: translateY(-15px) translateX(5px); }
         }
-        
         @keyframes slideDown {
-          from {
-            opacity: 0;
-            transform: translateY(-20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(-20px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-        
         @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(30px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-        
         @keyframes slideInLeft {
-          from {
-            opacity: 0;
-            transform: translateX(-50px);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
+          from { opacity: 0; transform: translateX(-50px); }
+          to { opacity: 1; transform: translateX(0); }
         }
       `}</style>
     </AdminLayout>
   );
 }
+
 
 // Composant pour le graphique mensuel
 interface MonthlyViewsChartProps {
