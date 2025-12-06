@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/AuthStore';
-import { adminApi } from '../../services/api';
+import { adminApi } from '../../services/api-client';
 import { statisticsService } from '../../services/statisticsService';
 import { 
   Loader, AlertCircle, Package, ShoppingCart, Clock, 
@@ -42,21 +42,22 @@ export default function AdminDashboardPage() {
   const [isVisible, setIsVisible] = useState<{ [key: string]: boolean }>({});
 
   // ==============================
-  // VÉRIFICATION AUTH
+  // VÉRIFICATION AUTH - MÊME MÉTHODE QUE LOGIN
   // ==============================
   useEffect(() => {
-    console.log('Dashboard - Verification auth:', { 
+    console.log('Dashboard - Vérification auth:', { 
       hasToken: !!token, 
       hasAdmin: !!admin
     });
     
+    // Si pas de token ou admin, rediriger vers login
     if (!token || !admin) {
-      console.log('Non authentifie, redirection vers login...');
+      console.log('🔴 Non authentifié, redirection vers login...');
       navigate('/admin/login', { replace: true });
       return;
     }
     
-    console.log('Authentifie, chargement du dashboard...');
+    console.log('🟢 Authentifié, chargement du dashboard...');
   }, [token, admin, navigate]);
 
   // ==============================
@@ -77,6 +78,15 @@ export default function AdminDashboardPage() {
         console.log('✅ Stats chargées:', response.data);
       } catch (err: any) {
         console.error('❌ Erreur chargement dashboard:', err);
+        
+        // Si erreur 401 (token invalide), déconnecter
+        if (err.status === 401) {
+          console.log('🔴 Token invalide, déconnexion...');
+          localStorage.removeItem('auth-store');
+          navigate('/admin/login', { replace: true });
+          return;
+        }
+        
         setError(err.message || 'Erreur lors du chargement du dashboard');
       } finally {
         setLoading(false);
@@ -99,8 +109,41 @@ export default function AdminDashboardPage() {
 
     fetchDashboard();
     fetchViewStatistics();
-  }, [token, admin]);
+  }, [token, admin, navigate]);
 
+  // ==============================
+  // LOADER PENDANT LA VÉRIFICATION
+  // ==============================
+  if (!token || !admin) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <Loader className="w-16 h-16 text-purple-400 animate-spin mx-auto mb-4" />
+          <p className="text-white text-lg font-semibold">Vérification d'authentification...</p>
+          <p className="text-purple-200 text-sm mt-2">Redirection vers la page de connexion</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ==============================
+  // LOADER PENDANT LE CHARGEMENT DES DONNÉES
+  // ==============================
+  if (loading && !stats) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <Loader className="w-16 h-16 text-purple-400 animate-spin mx-auto mb-4" />
+          <p className="text-white text-lg font-semibold">Chargement du dashboard...</p>
+          <p className="text-purple-200 text-sm mt-2">Récupération des données en cours</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ==============================
+  // EFFETS D'ANIMATION (inchangés)
+  // ==============================
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
     window.addEventListener('scroll', handleScroll);
@@ -126,6 +169,9 @@ export default function AdminDashboardPage() {
     return () => observer.disconnect();
   }, [stats, viewStats]);
 
+  // ==============================
+  // RENDU PRINCIPAL
+  // ==============================
   return (
     <AdminLayout>
       <div className="min-h-screen">
@@ -210,7 +256,7 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
-        {/* Loading State */}
+        {/* Loading State pour les statistiques */}
         {loading ? (
           <div className="flex flex-col items-center justify-center h-96 bg-gradient-to-br from-purple-50 to-pink-50 rounded-3xl shadow-2xl border border-purple-100">
             <Loader className="animate-spin text-purple-600 mb-4" size={60} />
