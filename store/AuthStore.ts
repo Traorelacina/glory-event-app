@@ -1,3 +1,4 @@
+// store/AuthStore.ts
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { authLogin, authLogout, LoginCredentials, LoginResponse, Admin } from '../services/api-client';
@@ -12,6 +13,8 @@ interface AuthState {
   login: (credentials: LoginCredentials) => Promise<void>;
   logout: () => Promise<void>;
   clearError: () => void;
+  isAuthenticated: () => boolean;
+  reset: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -27,25 +30,46 @@ export const useAuthStore = create<AuthState>()(
         set({ _hasHydrated: state });
       },
 
+      isAuthenticated: () => {
+        const { token, admin, _hasHydrated } = get();
+        return !!(token && admin && _hasHydrated);
+      },
+
+      reset: () => {
+        set({
+          admin: null,
+          token: null,
+          error: null,
+          isLoading: false,
+        });
+      },
+
       login: async (credentials: LoginCredentials) => {
         const { isLoading } = get();
         if (isLoading) {
-          console.warn('Connexion deja en cours');
+          console.warn('Connexion déjà en cours');
           return;
         }
 
         set({ isLoading: true, error: null });
         
         try {
-          console.log('Connexion en cours...');
+          console.log('🔐 Tentative de connexion...', credentials.email);
           
-          const response: LoginResponse = await authLogin(credentials);
+          // Ajouter un timeout pour éviter les blocages
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout: La connexion a pris trop de temps')), 15000)
+          );
+
+          const loginPromise = authLogin(credentials);
+          
+          const response: LoginResponse = await Promise.race([loginPromise, timeoutPromise]) as LoginResponse;
           
           if (!response.user || !response.token) {
-            throw new Error('Reponse invalide du serveur');
+            throw new Error('Réponse invalide du serveur: données manquantes');
           }
 
-          console.log('Connexion reussie:', response.user.email);
+          console.log('✅ Connexion réussie:', response.user.email);
           
           set({
             admin: response.user,
@@ -54,27 +78,28 @@ export const useAuthStore = create<AuthState>()(
             error: null,
           });
           
-          console.log('Session sauvegardee');
-          
-          await new Promise(resolve => setTimeout(resolve, 100));
+          // Force une mise à jour du localStorage
+          await new Promise(resolve => setTimeout(resolve, 50));
           
         } catch (error: any) {
-          console.error('Erreur de connexion:', error);
+          console.error('❌ Erreur de connexion:', error);
           
-          let errorMessage = 'Erreur de connexion. Veuillez reessayer.';
+          let errorMessage = 'Erreur de connexion. Veuillez réessayer.';
           
-          if (error.status === 401) {
+          if (error.message?.includes('Timeout')) {
+            errorMessage = 'La connexion a pris trop de temps. Vérifiez votre réseau.';
+          } else if (error.status === 401) {
             errorMessage = 'Email ou mot de passe incorrect';
           } else if (error.status === 403) {
-            errorMessage = 'Acces non autorise';
+            errorMessage = 'Accès non autorisé à l\'administration';
           } else if (error.status === 429) {
-            errorMessage = 'Trop de tentatives. Veuillez patienter.';
+            errorMessage = 'Trop de tentatives. Veuillez patienter quelques minutes.';
           } else if (error.status >= 500) {
-            errorMessage = 'Erreur serveur. Veuillez reessayer plus tard.';
+            errorMessage = 'Erreur serveur. Veuillez réessayer plus tard.';
           } else if (error.message) {
             errorMessage = error.message;
           } else if (!navigator.onLine) {
-            errorMessage = 'Pas de connexion Internet';
+            errorMessage = 'Pas de connexion Internet. Vérifiez votre connexion.';
           }
           
           set({
@@ -84,15 +109,16 @@ export const useAuthStore = create<AuthState>()(
             error: errorMessage,
           });
           
-          throw error;
+          throw new Error(errorMessage);
         }
       },
 
       logout: async () => {
         const { token } = get();
         
-        console.log('Deconnexion...');
+        console.log('🚪 Déconnexion en cours...');
         
+        // Réinitialiser immédiatement l'état local
         set({
           admin: null,
           token: null,
@@ -101,16 +127,20 @@ export const useAuthStore = create<AuthState>()(
         });
         
         try {
+          // Nettoyer le localStorage
           localStorage.removeItem('auth-store');
-          console.log('Session nettoyee');
+          console.log('🗑️ Session nettoyée du localStorage');
         } catch (e) {
-          console.error('Erreur nettoyage:', e);
+          console.error('❌ Erreur nettoyage localStorage:', e);
         }
         
+        // Appeler le logout serveur en arrière-plan (sans bloquer)
         if (token) {
-          authLogout(token)
-            .then(() => console.log('Deconnexion serveur OK'))
-            .catch((err) => console.error('Erreur logout serveur:', err));
+          setTimeout(() => {
+            authLogout(token)
+              .then(() => console.log('✅ Déconnexion serveur réussie'))
+              .catch((err) => console.warn('⚠️ Erreur logout serveur:', err.message || err));
+          }, 100);
         }
       },
 
@@ -120,36 +150,55 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'auth-store',
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => {
+        try {
+          return localStorage;
+        } catch (e) {
+          console.error('❌ localStorage non disponible:', e);
+          return {
+            getItem: () => null,
+            setItem: () => {},
+            removeItem: () => {}
+          };
+        }
+      }),
       
       partialize: (state) => ({
         admin: state.admin,
         token: state.token,
+        _hasHydrated: false, // Toujours réinitialiser l'hydratation
       }),
       
       onRehydrateStorage: () => {
-        console.log('Debut de hydratation du store...');
+        console.log('🌀 Début de l\'hydratation du store...');
         
         return (state, error) => {
           if (error) {
-            console.error('Erreur hydratation:', error);
-            state?.setHasHydrated(true);
+            console.error('❌ Erreur hydratation:', error);
+            // Forcer l'hydratation même en cas d'erreur
+            setTimeout(() => {
+              if (state) {
+                state.setHasHydrated(true);
+              }
+            }, 100);
           } else if (state) {
-            console.log('Store hydrate avec succes:', {
+            console.log('📊 Store hydraté:', {
               hasAdmin: !!state.admin,
-              hasToken: !!state.token
+              hasToken: !!state.token,
+              adminEmail: state.admin?.email || 'Aucun'
             });
             
-            if (state.admin && state.token) {
-              console.log('Session active:', state.admin.email);
-            } else {
-              console.log('Aucune session active');
-            }
-            
-            state.setHasHydrated(true);
+            // Délai pour éviter les conflits de rendu
+            setTimeout(() => {
+              state.setHasHydrated(true);
+              console.log('✅ Hydratation terminée');
+            }, 200);
           }
         };
       },
+      
+      // Version pour les migrations futures
+      version: 1,
     }
   )
 );
