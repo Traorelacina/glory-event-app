@@ -7,16 +7,9 @@ interface AuthState {
   token: string | null;
   isLoading: boolean;
   error: string | null;
-  isInitialized: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
   logout: () => Promise<void>;
   clearError: () => void;
-  setAdmin: (admin: Admin | null) => void;
-  setToken: (token: string | null) => void;
-  checkAuth: () => boolean;
-  checkAuthAsync: () => Promise<boolean>;
-  resetAuth: () => void;
-  getAuthState: () => { admin: Admin | null; token: string | null };
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -26,24 +19,20 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       isLoading: false,
       error: null,
-      isInitialized: false,
 
       login: async (credentials: LoginCredentials) => {
         const { isLoading } = get();
         if (isLoading) {
-          console.warn('⚠️ Tentative de connexion déjà en cours');
+          console.warn('⚠️ Connexion déjà en cours');
           return;
         }
 
         set({ isLoading: true, error: null });
         
         try {
-          console.log('🔐 Tentative de connexion dans le store...');
+          console.log('🔐 Connexion en cours...');
           
-          // Utiliser la fonction séparée qui ne sera pas mal minifiée
           const response: LoginResponse = await authLogin(credentials);
-          
-          console.log('📨 Réponse reçue:', response);
           
           if (!response.user || !response.token) {
             throw new Error('Réponse invalide du serveur');
@@ -51,19 +40,18 @@ export const useAuthStore = create<AuthState>()(
 
           console.log('✅ Connexion réussie:', response.user.email);
           
-          // Mise à jour SYNCHRONE et ATOMIQUE
+          // Mise à jour synchrone du state
           set({
             admin: response.user,
             token: response.token,
             isLoading: false,
             error: null,
-            isInitialized: true,
-          }, true);
+          });
           
-          console.log('💾 Session sauvegardée dans le store');
+          console.log('💾 Session sauvegardée');
           
         } catch (error: any) {
-          console.error('❌ Erreur de connexion dans le store:', error);
+          console.error('❌ Erreur de connexion:', error);
           
           let errorMessage = 'Erreur de connexion. Veuillez réessayer.';
           
@@ -86,10 +74,8 @@ export const useAuthStore = create<AuthState>()(
             token: null,
             isLoading: false,
             error: errorMessage,
-            isInitialized: true,
-          }, true);
+          });
           
-          // Relancer l'erreur pour que le composant puisse la catcher
           throw error;
         }
       },
@@ -97,97 +83,34 @@ export const useAuthStore = create<AuthState>()(
       logout: async () => {
         const { token } = get();
         
-        console.log('🚪 Déconnexion en cours...');
+        console.log('🚪 Déconnexion...');
         
-        // Réinitialisation IMMÉDIATE et SYNCHRONE
+        // Réinitialisation immédiate
         set({
           admin: null,
           token: null,
           error: null,
           isLoading: false,
-          isInitialized: true,
-        }, true);
+        });
         
-        // Nettoyer le localStorage IMMÉDIATEMENT
+        // Nettoyer le localStorage
         try {
           localStorage.removeItem('auth-store');
-          console.log('🧹 LocalStorage nettoyé');
+          console.log('🧹 Session nettoyée');
         } catch (e) {
-          console.error('Erreur nettoyage localStorage:', e);
+          console.error('Erreur nettoyage:', e);
         }
-        
-        console.log('✅ State réinitialisé');
         
         // Appel API en arrière-plan
         if (token) {
           authLogout(token)
-            .then(() => console.log('✅ Déconnexion serveur réussie'))
-            .catch((error) => console.error('⚠️ Erreur logout serveur:', error));
+            .then(() => console.log('✅ Déconnexion serveur OK'))
+            .catch((err) => console.error('⚠️ Erreur logout serveur:', err));
         }
       },
 
       clearError: () => {
         set({ error: null });
-      },
-
-      setAdmin: (admin: Admin | null) => {
-        set({ admin });
-      },
-
-      setToken: (token: string | null) => {
-        set({ token });
-      },
-
-      checkAuth: (): boolean => {
-        const { admin, token } = get();
-        const isAuthenticated = !!(admin && token);
-        
-        console.log('🔍 Vérification auth:', { 
-          hasAdmin: !!admin, 
-          hasToken: !!token,
-          isAuthenticated 
-        });
-        
-        return isAuthenticated;
-      },
-
-      checkAuthAsync: async (): Promise<boolean> => {
-        return new Promise((resolve) => {
-          // Vérifier immédiatement
-          const { admin, token } = get();
-          const isAuthenticated = !!(admin && token);
-          
-          console.log('🔍 Vérification auth async:', { 
-            hasAdmin: !!admin, 
-            hasToken: !!token,
-            isAuthenticated 
-          });
-          
-          resolve(isAuthenticated);
-        });
-      },
-
-      getAuthState: () => {
-        const { admin, token } = get();
-        return { admin, token };
-      },
-
-      resetAuth: () => {
-        console.log('🔄 Réinitialisation complète du store');
-        
-        set({
-          admin: null,
-          token: null,
-          isLoading: false,
-          error: null,
-          isInitialized: true,
-        }, true);
-        
-        try {
-          localStorage.removeItem('auth-store');
-        } catch (e) {
-          console.error('Erreur lors du nettoyage:', e);
-        }
       },
     }),
     {
@@ -200,50 +123,22 @@ export const useAuthStore = create<AuthState>()(
       }),
       
       onRehydrateStorage: () => {
-        console.log('💧 Début de l\'hydratation du store...');
+        console.log('💧 Hydratation du store...');
         
         return (state, error) => {
           if (error) {
-            console.error('❌ Erreur d\'hydratation:', error);
-            if (state) {
-              state.resetAuth();
-            }
+            console.error('❌ Erreur hydratation:', error);
           } else if (state) {
-            console.log('✅ Store hydraté avec succès:', {
+            console.log('✅ Store hydraté:', {
               hasAdmin: !!state.admin,
-              hasToken: !!state.token,
-              timestamp: new Date().toISOString()
+              hasToken: !!state.token
             });
             
-            // Forcer l'initialisation
-            state.isInitialized = true;
-            
             if (state.admin && state.token) {
-              console.log('👤 Session restaurée:', state.admin.email);
-            } else {
-              console.log('📭 Aucune session active');
+              console.log('👤 Session active:', state.admin.email);
             }
           }
         };
-      },
-      
-      version: 1,
-      
-      // AJOUTER CETTE FONCTION MIGRATE POUR CORRIGER L'ERREUR
-      migrate: (persistedState: any, version: number) => {
-        console.log(`🔄 Migration du store depuis la version ${version}`);
-        
-        if (version === 0) {
-          // Migration depuis la version 0
-          return {
-            ...persistedState,
-            isInitialized: true,
-            error: null,
-            isLoading: false,
-          };
-        }
-        
-        return persistedState;
       },
     }
   )
