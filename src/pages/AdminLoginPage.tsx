@@ -21,7 +21,7 @@ export default function AdminLoginPage() {
   // ==============================
   useEffect(() => {
     if (admin && token && !hasRedirected.current) {
-      console.log('Utilisateur authentifie, redirection...');
+      console.log('Utilisateur authentifié, redirection...');
       hasRedirected.current = true;
       
       // Petit délai pour laisser le store se synchroniser
@@ -90,19 +90,6 @@ export default function AdminLoginPage() {
   };
 
   const displayError = localError || error;
-
-  // ✅ Afficher un loader pendant l'hydratation
-  if (!_hasHydrated) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <Loader className="w-16 h-16 text-purple-400 animate-spin mx-auto mb-4" />
-          <p className="text-white text-lg font-semibold">Initialisation...</p>
-          <p className="text-purple-200 text-sm mt-2">Chargement de l'application</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen font-sans text-[#111827] overflow-x-hidden">
