@@ -1,175 +1,202 @@
-// components/ProtectedRoute.tsx
-import { useEffect, useState } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
-import { useAuthStore } from '../store/AuthStore';
-import { Loader, ShieldAlert, ShieldCheck } from 'lucide-react';
+// pages/AdminLoginPage.tsx
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../../store/AuthStore';
+import { Mail, Lock, AlertCircle, Loader, Sparkles } from 'lucide-react';
 
-interface ProtectedRouteProps {
-  children: React.ReactNode;
-  requireAdmin?: boolean;
-  showLoader?: boolean;
-}
+export default function AdminLoginPage() {
+  const navigate = useNavigate();
+  const { login, isLoading, error, clearError, admin, token, _hasHydrated } = useAuthStore();
 
-export default function ProtectedRoute({ 
-  children, 
-  requireAdmin = true,
-  showLoader = true 
-}: ProtectedRouteProps) {
-  const location = useLocation();
-  const { _hasHydrated, token, admin, isAuthenticated } = useAuthStore();
-  const [checking, setChecking] = useState(true);
-  const [checkStep, setCheckStep] = useState(0);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [localError, setLocalError] = useState<string | null>(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
+  // ==============================
+  // REDIRECTION SI DÉJÀ CONNECTÉ - VERSION SIMPLIFIÉE
+  // ==============================
   useEffect(() => {
+    // Attendre que le store soit hydraté
     if (!_hasHydrated) {
-      console.log('🛡️ ProtectedRoute: En attente d\'hydratation...');
-      setCheckStep(1);
+      console.log('⏳ Login: Store en cours d\'hydratation...');
       return;
     }
 
-    const performChecks = async () => {
-      setChecking(true);
+    // Vérifier si l'utilisateur est déjà connecté
+    if (admin && token && !isRedirecting) {
+      console.log('✅ Login: Déjà connecté, redirection vers dashboard...');
+      setIsRedirecting(true);
       
-      // Étape 1: Vérifier l'authentification
-      setCheckStep(2);
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Petit délai pour éviter les conflits de rendu
+      setTimeout(() => {
+        navigate('/admin/dashboard', { replace: true });
+      }, 100);
+    }
+  }, [_hasHydrated, admin, token, navigate, isRedirecting]);
+
+  // ==============================
+  // GESTION DE LA SOUMISSION
+  // ==============================
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (isLoading) {
+      console.log('⏳ Connexion déjà en cours...');
+      return;
+    }
+
+    // Validation simple
+    if (!email.trim() || !password.trim()) {
+      setLocalError('Veuillez remplir tous les champs');
+      return;
+    }
+
+    setLocalError(null);
+    clearError();
+
+    try {
+      console.log('🔑 Tentative de connexion...');
+      await login({ 
+        email: email.trim(), 
+        password: password.trim() 
+      });
       
-      if (!isAuthenticated()) {
-        console.log('🛡️ ProtectedRoute: Non authentifié');
-        setCheckStep(3);
-        await new Promise(resolve => setTimeout(resolve, 300));
-        setChecking(false);
-        return;
-      }
-
-      // Étape 2: Vérifier les permissions admin si nécessaire
-      setCheckStep(4);
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // La redirection se fera automatiquement via useEffect
       
-      if (requireAdmin && admin?.role !== 'admin') {
-        console.log('🛡️ ProtectedRoute: Permissions insuffisantes');
-        setCheckStep(5);
-        await new Promise(resolve => setTimeout(resolve, 300));
-        setChecking(false);
-        return;
-      }
+    } catch (err: any) {
+      console.error('❌ Erreur de connexion:', err);
+      const errorMessage = err.message || 'Erreur de connexion. Veuillez réessayer.';
+      setLocalError(errorMessage);
+      setPassword('');
+    }
+  };
 
-      // Étape 3: Accès autorisé
-      setCheckStep(6);
-      console.log('🛡️ ProtectedRoute: Accès autorisé');
-      await new Promise(resolve => setTimeout(resolve, 100));
-      setChecking(false);
-    };
+  const displayError = localError || error;
 
-    performChecks();
-  }, [_hasHydrated, isAuthenticated, admin?.role, requireAdmin]);
-
-  // Affichage pendant les vérifications
-  if (checking && showLoader) {
+  // ==============================
+  // AFFICHAGE SIMPLE SANS ÉCRAN D'INITIALISATION
+  // ==============================
+  if (!_hasHydrated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-50 flex flex-col items-center justify-center p-6">
-        <div className="max-w-md w-full text-center">
-          {/* Animation de chargement */}
-          <div className="relative mb-8">
-            <div className="w-32 h-32 mx-auto relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full blur-xl opacity-30 animate-pulse"></div>
-              <div className="absolute inset-4 bg-gradient-to-br from-white to-blue-50 rounded-full shadow-2xl flex items-center justify-center">
-                {checkStep <= 3 ? (
-                  <Loader className="w-16 h-16 text-blue-600 animate-spin" />
-                ) : checkStep <= 5 ? (
-                  <ShieldAlert className="w-16 h-16 text-amber-600" />
-                ) : (
-                  <ShieldCheck className="w-16 h-16 text-green-600 animate-pulse" />
-                )}
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <Loader className="w-12 h-12 text-purple-400 animate-spin mx-auto mb-4" />
+          <p className="text-white text-lg">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Si on est en train de rediriger, on montre un loader simple
+  if (isRedirecting) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <Sparkles className="w-12 h-12 text-yellow-400 animate-pulse mx-auto mb-4" />
+          <p className="text-white text-lg">Redirection vers le tableau de bord...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ==============================
+  // FORMULAIRE DE CONNEXION
+  // ==============================
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-6 py-3 rounded-full border border-white/20 mb-6">
+            <Sparkles className="w-5 h-5 text-yellow-400" />
+            <span className="font-semibold text-sm uppercase tracking-wider text-white">Espace Administrateur</span>
+          </div>
+
+          <h1 className="font-serif text-4xl font-bold text-white mb-4">
+            Connexion
+          </h1>
+          
+          <p className="text-gray-200">
+            Accédez à votre tableau de bord
+          </p>
+        </div>
+
+        {/* Carte de connexion */}
+        <div className="bg-white/10 backdrop-blur-md rounded-2xl shadow-2xl p-8 border border-white/20">
+          {/* Message d'erreur */}
+          {displayError && (
+            <div className="mb-6 p-4 bg-red-500/20 backdrop-blur-sm border-2 border-red-400/50 rounded-xl flex gap-3">
+              <AlertCircle className="text-red-400 flex-shrink-0 mt-0.5" size={20} />
+              <p className="text-red-100 text-sm font-medium">{displayError}</p>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Champ Email */}
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-white mb-2">
+                Email Administrateur
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-300" size={20} />
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="admin@exemple.com"
+                  className="w-full pl-12 pr-4 py-3 bg-white/5 backdrop-blur-sm border-2 border-white/20 rounded-xl text-white placeholder-gray-300 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-400/30 transition-all"
+                  disabled={isLoading}
+                  autoComplete="email"
+                  required
+                  autoFocus
+                />
               </div>
             </div>
-          </div>
 
-          {/* Messages d'étape */}
-          <div className="space-y-4 mb-8">
-            <h2 className="text-2xl font-bold text-gray-800">
-              {checkStep === 1 && 'Initialisation de la sécurité...'}
-              {checkStep === 2 && 'Vérification de votre session...'}
-              {checkStep === 3 && 'Session expirée ou invalide'}
-              {checkStep === 4 && 'Vérification des permissions...'}
-              {checkStep === 5 && 'Permissions insuffisantes'}
-              {checkStep === 6 && 'Accès autorisé!'}
-            </h2>
-            
-            <p className="text-gray-600">
-              {checkStep === 1 && 'Chargement des paramètres de sécurité...'}
-              {checkStep === 2 && 'Vérification de votre token d\'authentification...'}
-              {checkStep === 3 && 'Redirection vers la page de connexion...'}
-              {checkStep === 4 && 'Vérification de vos droits d\'accès...'}
-              {checkStep === 5 && 'Vous n\'avez pas les permissions nécessaires'}
-              {checkStep === 6 && 'Préparation de votre espace...'}
-            </p>
-          </div>
+            {/* Champ Mot de passe */}
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-white mb-2">
+                Mot de passe
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-300" size={20} />
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full pl-12 pr-4 py-3 bg-white/5 backdrop-blur-sm border-2 border-white/20 rounded-xl text-white placeholder-gray-300 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30 transition-all"
+                  disabled={isLoading}
+                  autoComplete="current-password"
+                  required
+                />
+              </div>
+            </div>
 
-          {/* Indicateur de progression */}
-          <div className="bg-white rounded-full p-1 shadow-inner border border-gray-200 max-w-xs mx-auto">
-            <div 
-              className="h-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-300"
-              style={{ width: `${(checkStep / 6) * 100}%` }}
-            ></div>
-          </div>
+            {/* Bouton de connexion */}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-all flex items-center justify-center gap-3"
+            >
+              {isLoading ? (
+                <>
+                  <Loader className="animate-spin" size={20} />
+                  <span>Connexion en cours...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-5 h-5" />
+                  <span>Se connecter</span>
+                </>
+              )}
+            </button>
+          </form>
         </div>
       </div>
-    );
-  }
-
-  // Redirection si non authentifié
-  if (!isAuthenticated()) {
-    return (
-      <Navigate 
-        to="/admin/login" 
-        replace 
-        state={{ 
-          from: location,
-          message: 'Veuillez vous connecter pour accéder à cette page',
-          requiresAuth: true
-        }}
-      />
-    );
-  }
-
-  // Erreur de permissions
-  if (requireAdmin && admin?.role !== 'admin') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50 flex flex-col items-center justify-center p-4">
-        <div className="max-w-md text-center bg-white/80 backdrop-blur-sm rounded-3xl p-8 shadow-2xl border border-amber-200">
-          <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-amber-500 to-orange-500 rounded-full flex items-center justify-center shadow-lg">
-            <ShieldAlert className="text-white w-12 h-12" />
-          </div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-3">
-            Accès Restreint
-          </h2>
-          <p className="text-gray-700 mb-6 leading-relaxed">
-            Vous essayez d'accéder à une section réservée aux administrateurs.
-            <br />
-            <span className="font-semibold text-amber-700">
-              {admin?.email}
-            </span> n'a pas les permissions nécessaires.
-          </p>
-          <div className="space-y-3">
-            <button
-              onClick={() => window.history.back()}
-              className="w-full px-6 py-3 bg-gradient-to-r from-gray-600 to-gray-700 text-white rounded-xl font-semibold hover:opacity-90 transition-opacity shadow-md"
-            >
-              ← Retour à la page précédente
-            </button>
-            <button
-              onClick={() => navigate('/admin/dashboard')}
-              className="w-full px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-semibold hover:opacity-90 transition-opacity shadow-md"
-            >
-              Aller au tableau de bord
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Tout est bon, afficher le contenu
-  return <>{children}</>;
+    </div>
+  );
 }
