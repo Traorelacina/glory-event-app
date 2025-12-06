@@ -32,7 +32,7 @@ interface DashboardStats {
 
 export default function AdminDashboardPage() {
   const navigate = useNavigate();
-  const { token, admin, _hasHydrated } = useAuthStore();
+  const { token, admin } = useAuthStore();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [viewStats, setViewStats] = useState<ViewStatistics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,34 +42,28 @@ export default function AdminDashboardPage() {
   const [isVisible, setIsVisible] = useState<{ [key: string]: boolean }>({});
 
   // ==============================
-  // VÉRIFICATION AUTH - ATTENDRE L'HYDRATATION
+  // VÉRIFICATION AUTH
   // ==============================
   useEffect(() => {
-    if (!_hasHydrated) {
-      console.log('⏳ En attente de l\'hydratation du store...');
-      return;
-    }
-
-    console.log('📊 Dashboard - Vérification auth:', { 
+    console.log('Dashboard - Verification auth:', { 
       hasToken: !!token, 
-      hasAdmin: !!admin,
-      hydrated: _hasHydrated 
+      hasAdmin: !!admin
     });
     
     if (!token || !admin) {
-      console.log('⚠️ Non authentifié, redirection vers login...');
+      console.log('Non authentifie, redirection vers login...');
       navigate('/admin/login', { replace: true });
       return;
     }
     
-    console.log('✅ Authentifié, chargement du dashboard...');
-  }, [token, admin, _hasHydrated, navigate]);
+    console.log('Authentifie, chargement du dashboard...');
+  }, [token, admin, navigate]);
 
   // ==============================
   // CHARGEMENT DES DONNÉES
   // ==============================
   useEffect(() => {
-    if (!_hasHydrated || !token || !admin) {
+    if (!token || !admin) {
       return;
     }
 
@@ -105,7 +99,7 @@ export default function AdminDashboardPage() {
 
     fetchDashboard();
     fetchViewStatistics();
-  }, [token, admin, _hasHydrated]);
+  }, [token, admin]);
 
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
@@ -131,18 +125,6 @@ export default function AdminDashboardPage() {
 
     return () => observer.disconnect();
   }, [stats, viewStats]);
-
-  if (!_hasHydrated) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-purple-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader className="w-16 h-16 text-purple-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-700 text-lg font-semibold">Initialisation...</p>
-          <p className="text-gray-500 text-sm mt-2">Chargement de votre session</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <AdminLayout>
