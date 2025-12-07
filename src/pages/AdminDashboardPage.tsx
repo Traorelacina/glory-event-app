@@ -132,6 +132,7 @@ export default function AdminDashboardPage() {
         if (!token) throw new Error('Token manquant');
 
         const response = await adminApi.getDashboard(token);
+        console.log('📊 Données dashboard reçues:', response.data); // AJOUT: Debug
         setStats(response.data);
         setError(null);
         console.log('✅ Stats chargées');
@@ -277,8 +278,8 @@ export default function AdminDashboardPage() {
           </div>
         ) : stats ? (
           <>
-            {/* Cartes de statistiques (6 cartes seulement) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            {/* Cartes de statistiques (8 cartes) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <StatCard 
                 label="Vues Total" 
                 value={viewStats?.total_views || 0} 
@@ -303,23 +304,24 @@ export default function AdminDashboardPage() {
                 subtitle="Ce mois"
                 loading={statsLoading}
               />
+              {/* CORRECTION: Utiliser des valeurs par défaut avec l'opérateur ?. */}
               <StatCard 
                 label="Produits" 
-                value={stats.total_produits} 
+                value={stats?.total_produits || 0} 
                 icon={Package}
                 gradient="from-pink-500 to-rose-500"
                 subtitle="Catalogue"
               />
               <StatCard 
                 label="Commandes" 
-                value={stats.total_commandes} 
+                value={stats?.total_commandes || 0} 
                 icon={ShoppingCart}
                 gradient="from-blue-500 to-cyan-500"
                 subtitle="Total"
               />
               <StatCard 
                 label="En attente" 
-                value={stats.commandes_en_attente} 
+                value={stats?.commandes_en_attente || 0} 
                 icon={Clock}
                 gradient="from-amber-500 to-orange-500"
                 subtitle="À traiter"
@@ -327,7 +329,7 @@ export default function AdminDashboardPage() {
               />
               <StatCard 
                 label="Contacts" 
-                value={stats.total_contacts} 
+                value={stats?.total_contacts || 0} 
                 icon={Mail}
                 gradient="from-violet-500 to-purple-500"
                 subtitle="Reçus"
@@ -478,7 +480,35 @@ export default function AdminDashboardPage() {
               </div>
             </div>
           </>
-        ) : null}
+        ) : (
+          // État quand stats est null malgré le chargement terminé
+          <div className="flex flex-col items-center justify-center h-96 bg-gradient-to-br from-red-50 to-pink-50 rounded-3xl shadow-2xl border border-red-100 mb-8">
+            <AlertCircle className="w-16 h-16 text-red-500 mb-4" />
+            <p className="text-gray-700 font-semibold text-lg mb-2">Données non disponibles</p>
+            <p className="text-gray-600 text-sm text-center max-w-md mb-4">
+              Impossible de charger les statistiques du dashboard.
+            </p>
+            <button 
+              onClick={() => {
+                setLoading(true);
+                // Recharger les données
+                adminApi.getDashboard(token!)
+                  .then(response => {
+                    console.log('🔄 Données rechargées:', response.data);
+                    setStats(response.data);
+                  })
+                  .catch(err => {
+                    console.error('❌ Erreur rechargement:', err);
+                    setError('Erreur lors du rechargement des données');
+                  })
+                  .finally(() => setLoading(false));
+              }}
+              className="px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-semibold hover:opacity-90 transition-opacity"
+            >
+              Réessayer
+            </button>
+          </div>
+        )}
       </div>
 
       <style>{`
@@ -946,6 +976,9 @@ interface StatCardProps {
 }
 
 function StatCard({ label, value, icon: Icon, gradient, subtitle, highlight, loading }: StatCardProps) {
+  // CORRECTION: Gérer les valeurs undefined/null
+  const displayValue = value !== undefined && value !== null ? value : 0;
+  
   return (
     <div className={`group relative bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-200 hover:border-purple-300 shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 cursor-default overflow-hidden ${highlight ? 'ring-2 ring-yellow-400 ring-offset-2' : ''}`}>
       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
@@ -974,8 +1007,9 @@ function StatCard({ label, value, icon: Icon, gradient, subtitle, highlight, loa
           </div>
         ) : (
           <>
+            {/* CORRECTION: Utiliser displayValue au lieu de value directement */}
             <p className={`text-transparent bg-clip-text bg-gradient-to-r ${gradient} text-4xl font-bold mb-2`}>
-              {value}
+              {displayValue}
             </p>
             {subtitle && (
               <p className="text-gray-500 text-sm">{subtitle}</p>
