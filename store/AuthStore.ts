@@ -8,6 +8,8 @@ interface AuthState {
   isLoading: boolean;
   error: string | null;
   isAuthenticated: boolean;
+  _hasHydrated: boolean; // Flag pour savoir si le store est hydraté
+  setHasHydrated: (state: boolean) => void;
   login: (credentials: LoginCredentials) => Promise<void>;
   logout: () => Promise<void>;
   clearError: () => void;
@@ -22,13 +24,32 @@ export const useAuthStore = create<AuthState>()(
       isLoading: false,
       error: null,
       isAuthenticated: false,
+      _hasHydrated: false,
+
+      setHasHydrated: (state: boolean) => {
+        set({ _hasHydrated: state });
+      },
 
       checkAuth: () => {
-        const { admin, token } = get();
+        const state = get();
+        
+        // Attendre que l'hydratation soit complète
+        if (!state._hasHydrated) {
+          console.log('⏳ En attente de l\'hydratation du store...');
+          return false;
+        }
+        
+        const { admin, token } = state;
         const isAuth = !!(admin && token);
         
+        console.log('🔍 Vérification auth:', { 
+          hasAdmin: !!admin, 
+          hasToken: !!token, 
+          isAuthenticated: isAuth 
+        });
+        
         // Mettre à jour isAuthenticated si nécessaire
-        if (get().isAuthenticated !== isAuth) {
+        if (state.isAuthenticated !== isAuth) {
           set({ isAuthenticated: isAuth });
         }
         
@@ -48,8 +69,11 @@ export const useAuthStore = create<AuthState>()(
         
         try {
           console.log('🔐 Tentative de connexion...');
+          console.log('🔐 Login attempt to:', `${import.meta.env.VITE_API_BASE_URL || 'https://detailed-odette-freelence-76d5d470.koyeb.app/api'}/login`);
           
           const response: LoginResponse = await authLogin(credentials);
+          
+          console.log('✅ Login response:', { user: response.user, token: response.token });
           
           // Validation de la réponse
           if (!response.user || !response.token) {
@@ -68,6 +92,9 @@ export const useAuthStore = create<AuthState>()(
           });
           
           console.log('💾 Session sauvegardée dans localStorage');
+          
+          // Forcer la persistence immédiate
+          await new Promise(resolve => setTimeout(resolve, 50));
           
         } catch (error: any) {
           console.error('❌ Erreur de connexion:', error);
@@ -119,6 +146,8 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: false,
         });
         
+        console.log('✅ State réinitialisé');
+        
         // Nettoyer le localStorage
         try {
           localStorage.removeItem('auth-store');
@@ -147,22 +176,37 @@ export const useAuthStore = create<AuthState>()(
         token: state.token,
         isAuthenticated: state.isAuthenticated,
       }),
-      // Ajouter un hydratation listener pour vérifier l'état au chargement
-      onRehydrateStorage: () => (state) => {
-        if (state) {
-          console.log('🔄 Store hydraté:', {
-            hasAdmin: !!state.admin,
-            hasToken: !!state.token,
-            isAuthenticated: state.isAuthenticated
-          });
-          
-          // Vérifier la cohérence des données
-          if (state.admin && state.token && !state.isAuthenticated) {
-            state.isAuthenticated = true;
-          } else if ((!state.admin || !state.token) && state.isAuthenticated) {
-            state.isAuthenticated = false;
+      onRehydrateStorage: () => {
+        console.log('💧 Début de l\'hydratation du store...');
+        
+        return (state, error) => {
+          if (error) {
+            console.error('❌ Erreur d\'hydratation:', error);
+            return;
           }
-        }
+          
+          if (state) {
+            const hydrationState = {
+              hasAdmin: !!state.admin,
+              hasToken: !!state.token,
+              timestamp: new Date().toISOString()
+            };
+            
+            console.log('✅ Store hydraté avec succès:', hydrationState);
+            
+            // Vérifier la cohérence des données
+            if (state.admin && state.token) {
+              state.isAuthenticated = true;
+              console.log('✅ Session active détectée');
+            } else {
+              state.isAuthenticated = false;
+              console.log('📭 Aucune session active');
+            }
+            
+            // Marquer l'hydratation comme complète
+            state._hasHydrated = true;
+          }
+        };
       },
     }
   )
