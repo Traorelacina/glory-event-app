@@ -6,7 +6,7 @@ import { statisticsService } from '../../services/statisticsService';
 import { 
   Loader, AlertCircle, Package, ShoppingCart, Clock, 
   Mail, TrendingUp, Activity, Sparkles, Star, ArrowRight,
-  Eye, Calendar, BarChart3, Users, FolderOpen, Globe
+  Eye, Calendar, BarChart3
 } from 'lucide-react';
 import AdminLayout from '../components/AdminLayout';
 import { Chart, Bars, Transform, Layer, Ticks, Labels } from 'rumble-charts';
@@ -277,8 +277,8 @@ export default function AdminDashboardPage() {
           </div>
         ) : stats ? (
           <>
-            {/* Cartes de statistiques */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {/* Cartes de statistiques (6 cartes seulement) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
               <StatCard 
                 label="Vues Total" 
                 value={viewStats?.total_views || 0} 
@@ -302,13 +302,6 @@ export default function AdminDashboardPage() {
                 gradient="from-purple-500 to-pink-500"
                 subtitle="Ce mois"
                 loading={statsLoading}
-              />
-              <StatCard 
-                label="Services" 
-                value={stats.total_services} 
-                icon={FolderOpen}
-                gradient="from-teal-500 to-emerald-500"
-                subtitle="Total services"
               />
               <StatCard 
                 label="Produits" 
@@ -340,13 +333,6 @@ export default function AdminDashboardPage() {
                 subtitle="Reçus"
               />
               <StatCard 
-                label="Portfolio" 
-                value={stats.total_portfolio} 
-                icon={Globe}
-                gradient="from-rose-500 to-red-500"
-                subtitle="Projets"
-              />
-              <StatCard 
                 label="Vues Annuelles" 
                 value={viewStats?.year_views || 0} 
                 icon={BarChart3}
@@ -356,9 +342,8 @@ export default function AdminDashboardPage() {
               />
             </div>
 
-            {/* Section Graphiques */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-              {/* Graphique des vues quotidiennes */}
+            {/* Graphique principal - Prend toute la largeur */}
+            <div className="mb-8">
               <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6">
                 <div className="flex items-center justify-between mb-6">
                   <div>
@@ -378,46 +363,16 @@ export default function AdminDashboardPage() {
                     loading={statsLoading}
                   />
                 ) : (
-                  <div className="h-64 flex items-center justify-center text-gray-500">
+                  <div className="h-96 flex flex-col items-center justify-center text-gray-500">
                     {statsLoading ? (
-                      <Loader className="animate-spin text-blue-600" size={32} />
+                      <Loader className="animate-spin text-blue-600 mb-4" size={40} />
                     ) : (
                       <>
-                        <BarChart3 className="w-12 h-12 mb-3 text-gray-400" />
-                        <p className="font-medium">Aucune donnée disponible</p>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Graphique des pages populaires */}
-              <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                      <Eye className="text-purple-600" />
-                      Pages les Plus Visités
-                    </h3>
-                    <p className="text-gray-600 text-sm">Top 5 des pages avec le plus de vues</p>
-                  </div>
-                  <div className="bg-purple-50 text-purple-700 px-3 py-1 rounded-full text-sm font-semibold">
-                    Analyse
-                  </div>
-                </div>
-                {viewStats?.page_views ? (
-                  <PageViewsChart 
-                    data={viewStats.page_views} 
-                    loading={statsLoading}
-                  />
-                ) : (
-                  <div className="h-64 flex items-center justify-center text-gray-500">
-                    {statsLoading ? (
-                      <Loader className="animate-spin text-purple-600" size={32} />
-                    ) : (
-                      <>
-                        <Eye className="w-12 h-12 mb-3 text-gray-400" />
-                        <p className="font-medium">Aucune donnée de pages</p>
+                        <BarChart3 className="w-20 h-20 mb-3 text-gray-400" />
+                        <p className="font-medium text-lg mb-2">Aucune donnée disponible</p>
+                        <p className="text-gray-500 text-center max-w-md">
+                          Les statistiques de vues des derniers jours apparaîtront ici dès que vos visiteurs navigueront sur votre site.
+                        </p>
                       </>
                     )}
                   </div>
@@ -425,9 +380,8 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
-            {/* Deuxième ligne de graphiques */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-              {/* Graphique des vues mensuelles */}
+            {/* Graphique mensuel - Prend toute la largeur */}
+            <div className="mb-8">
               <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6">
                 <div className="flex items-center justify-between mb-6">
                   <div>
@@ -447,20 +401,22 @@ export default function AdminDashboardPage() {
                     loading={statsLoading}
                   />
                 ) : (
-                  <div className="h-64 flex items-center justify-center text-gray-500">
+                  <div className="h-96 flex flex-col items-center justify-center text-gray-500">
                     {statsLoading ? (
-                      <Loader className="animate-spin text-teal-600" size={32} />
+                      <Loader className="animate-spin text-teal-600 mb-4" size={40} />
                     ) : (
                       <>
-                        <TrendingUp className="w-12 h-12 mb-3 text-gray-400" />
-                        <p className="font-medium">Aucune donnée mensuelle</p>
+                        <TrendingUp className="w-20 h-20 mb-3 text-gray-400" />
+                        <p className="font-medium text-lg">Aucune donnée mensuelle</p>
                       </>
                     )}
                   </div>
                 )}
               </div>
+            </div>
 
-              {/* Vues récentes */}
+            {/* Section Vues Récentes */}
+            <div className="mb-8">
               <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6">
                 <div className="flex items-center justify-between mb-6">
                   <div>
@@ -495,12 +451,12 @@ export default function AdminDashboardPage() {
             </div>
 
             {/* Actions rapides */}
-            <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl shadow-xl border border-purple-100 p-6 mb-8">
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl shadow-xl border border-purple-100 p-6">
               <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
                 <Sparkles className="text-purple-600" />
                 Actions Rapides
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <QuickActionButton 
                   label="Gérer les Produits"
                   href="/admin/products"
@@ -518,12 +474,6 @@ export default function AdminDashboardPage() {
                   href="/admin/contacts"
                   icon={Mail}
                   gradient="from-purple-500 to-pink-500"
-                />
-                <QuickActionButton 
-                  label="Ajouter un Service"
-                  href="/admin/services/new"
-                  icon={FolderOpen}
-                  gradient="from-orange-500 to-red-500"
                 />
               </div>
             </div>
@@ -580,7 +530,7 @@ function MonthlyViewsChart({ data, loading }: MonthlyViewsChartProps) {
       month: monthNum,
       label: new Date(2024, i, 1).toLocaleDateString('fr-FR', { month: 'short' }),
       views: found ? found.views : 0,
-      index: i // Keep track of index
+      index: i
     };
   });
 
@@ -918,163 +868,6 @@ function ViewsBarChart({ data, loading }: ViewsBarChartProps) {
             })}
           </div>
         </div>
-      </div>
-    </div>
-  );
-}
-
-// Composant pour le graphique des pages avec Rumble Charts
-interface PageViewsChartProps {
-  data: Array<{ page_name: string; views: number }>;
-  loading: boolean;
-}
-
-function PageViewsChart({ data, loading }: PageViewsChartProps) {
-  if (loading) {
-    return (
-      <div className="h-64 flex items-center justify-center">
-        <Loader className="animate-spin text-purple-600" size={32} />
-      </div>
-    );
-  }
-
-  if (!data || data.length === 0) {
-    return (
-      <div className="h-64 flex flex-col items-center justify-center text-gray-500">
-        <Eye className="w-12 h-12 mb-3 text-gray-400" />
-        <p className="font-medium">Aucune page visitée</p>
-        <p className="text-sm text-center mt-1">Les statistiques par page apparaîtront ici</p>
-      </div>
-    );
-  }
-
-  const sortedData = [...data].sort((a, b) => b.views - a.views).slice(0, 5);
-  const maxViews = Math.max(...sortedData.map(page => page.views));
-
-  const chartData = {
-    series: [{
-      data: sortedData.map(page => page.views)
-    }]
-  };
-
-  return (
-    <div className="w-full">
-      <Chart 
-        width={500} 
-        height={280} 
-        series={chartData.series}
-        minY={0}
-      >
-        <Transform method={['transpose']}>
-          <Layer width="85%" height="80%">
-            {/* Grille de fond */}
-            <Ticks 
-              axis="y"
-              ticks={{ maxTicks: 5 }}
-              lineLength="100%"
-              lineStyle={{ 
-                stroke: '#f1f5f9', 
-                strokeWidth: 1
-              }}
-            />
-            
-            {/* Barres horizontales avec gradient */}
-            <Bars
-              innerPadding={20}
-              barStyle={{
-                fill: 'url(#pageGradient)',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease',
-                rx: 8
-              }}
-              barAttributes={{
-                onMouseOver: (e: any) => {
-                  e.target.style.opacity = '0.8';
-                  e.target.style.transform = 'scale(1.02)';
-                },
-                onMouseOut: (e: any) => {
-                  e.target.style.opacity = '1';
-                  e.target.style.transform = 'scale(1)';
-                }
-              }}
-            />
-            
-            {/* Définition des gradients */}
-            <defs>
-              <linearGradient id="pageGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#a855f7" />
-                <stop offset="50%" stopColor="#c084fc" />
-                <stop offset="100%" stopColor="#ec4899" />
-              </linearGradient>
-            </defs>
-
-            {/* Étiquettes des valeurs */}
-            <Labels
-              label={({ seriesIndex, pointIndex, x }) => {
-                const value = sortedData[pointIndex]?.views;
-                return value > 0 ? value.toString() : '';
-              }}
-              labelAttributes={{
-                x: 10,
-                fill: '#ffffff',
-                fontSize: 11,
-                fontWeight: 'bold',
-                textAnchor: 'start'
-              }}
-            />
-
-            {/* Étiquettes des noms de pages */}
-            <Labels
-              label={({ seriesIndex, pointIndex }) => {
-                return sortedData[pointIndex]?.page_name || '';
-              }}
-              labelAttributes={{
-                x: -10,
-                fill: '#374151',
-                fontSize: 12,
-                fontWeight: '600',
-                textAnchor: 'end'
-              }}
-            />
-          </Layer>
-        </Transform>
-      </Chart>
-
-      {/* Légende détaillée */}
-      <div className="mt-6 space-y-3">
-        {sortedData.map((page, index) => {
-          const percentage = maxViews > 0 ? (page.views / maxViews) * 100 : 0;
-          
-          return (
-            <div 
-              key={index} 
-              className="flex items-center justify-between p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-100 hover:border-purple-300 transition-all duration-300 group"
-            >
-              <div className="flex items-center gap-3 flex-1">
-                <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                  {index + 1}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <span className="text-gray-800 font-semibold block capitalize text-sm">
-                    {page.page_name}
-                  </span>
-                  <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
-                    <div 
-                      className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all duration-500"
-                      style={{ width: `${percentage}%` }}
-                    ></div>
-                  </div>
-                </div>
-              </div>
-              <div className="text-right flex-shrink-0 ml-4">
-                <span className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 block">
-                  {page.views.toLocaleString()}
-                </span>
-                <p className="text-xs text-gray-600">{Math.round(percentage)}% du max</p>
-              </div>
-            </div>
-          );
-        })}
       </div>
     </div>
   );
