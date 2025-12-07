@@ -5,7 +5,7 @@ import { Mail, Lock, AlertCircle, Loader, Sparkles, CheckCircle, ArrowRight } fr
 
 export default function AdminLoginPage() {
   const navigate = useNavigate();
-  const { login, isLoading, error, clearError, admin, token } = useAuthStore();
+  const { login, isLoading, error, clearError, checkAuth } = useAuthStore();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -15,21 +15,40 @@ export default function AdminLoginPage() {
   
   // Ref pour éviter les doubles redirections
   const hasRedirected = useRef(false);
+  const isSubmitting = useRef(false);
 
   // ==============================
-  // REDIRECTION AUTOMATIQUE
+  // VÉRIFICATION INITIALE D'AUTHENTIFICATION
   // ==============================
   useEffect(() => {
-    if (admin && token && !hasRedirected.current) {
-      console.log('Utilisateur authentifié, redirection...');
+    const isAuth = checkAuth();
+    
+    if (isAuth && !hasRedirected.current) {
+      console.log('✅ Utilisateur déjà authentifié, redirection immédiate...');
       hasRedirected.current = true;
-      
-      // Petit délai pour laisser le store se synchroniser
-      setTimeout(() => {
-        navigate('/admin/dashboard', { replace: true });
-      }, 100);
+      navigate('/admin/dashboard', { replace: true });
     }
-  }, [admin, token, navigate]);
+  }, [checkAuth, navigate]);
+
+  // ==============================
+  // VÉRIFICATION APRÈS LOGIN
+  // ==============================
+  useEffect(() => {
+    // Ne vérifier qu'après un login réussi (pas de loading, pas d'erreur)
+    if (!isLoading && !error && !hasRedirected.current) {
+      const isAuth = checkAuth();
+      
+      if (isAuth) {
+        console.log('✅ Login réussi, redirection vers dashboard...');
+        hasRedirected.current = true;
+        
+        // Petit délai pour s'assurer que le store est bien persisté
+        setTimeout(() => {
+          navigate('/admin/dashboard', { replace: true });
+        }, 100);
+      }
+    }
+  }, [isLoading, error, checkAuth, navigate]);
 
   // ==============================
   // EFFET PARALLAX
@@ -54,9 +73,13 @@ export default function AdminLoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (isLoading) return;
+    // Éviter les doubles soumissions
+    if (isLoading || isSubmitting.current) {
+      console.warn('⚠️ Soumission déjà en cours');
+      return;
+    }
 
-    // Validation
+    // Validation côté client
     if (!email.trim() || !password.trim()) {
       setLocalError('Veuillez remplir tous les champs');
       return;
@@ -68,24 +91,33 @@ export default function AdminLoginPage() {
       return;
     }
 
+    // Réinitialiser les erreurs
     setLocalError(null);
     clearError();
+    isSubmitting.current = true;
 
     try {
-      console.log('🔑 Tentative de connexion...');
+      console.log('🔑 Tentative de connexion pour:', email.trim());
+      
       await login({ 
         email: email.trim(), 
         password: password.trim() 
       });
       
-      console.log('✅ Connexion réussie');
+      console.log('✅ Login effectué avec succès');
       // La redirection se fera automatiquement via useEffect
       
     } catch (err: any) {
-      console.error('❌ Erreur de connexion:', err);
+      console.error('❌ Erreur lors de la connexion:', err);
+      
       const errorMessage = err.message || 'Erreur de connexion. Veuillez réessayer.';
       setLocalError(errorMessage);
+      
+      // Réinitialiser le mot de passe en cas d'erreur
       setPassword('');
+      
+    } finally {
+      isSubmitting.current = false;
     }
   };
 
@@ -250,7 +282,7 @@ export default function AdminLoginPage() {
               {/* Bouton de connexion */}
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || isSubmitting.current}
                 className="w-full group relative bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] hover:from-[#EC4899] hover:to-[#8B5CF6] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3.5 rounded-xl transition-all duration-500 transform hover:-translate-y-1 hover:shadow-2xl hover:shadow-purple-500/50 disabled:hover:transform-none disabled:hover:shadow-none flex items-center justify-center gap-3 overflow-hidden"
               >
                 <span className="absolute inset-0 bg-gradient-to-r from-[#EC4899] to-[#8B5CF6] translate-x-full group-hover:translate-x-0 transition-transform duration-300"></span>
@@ -299,7 +331,7 @@ export default function AdminLoginPage() {
             <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20">
               <CheckCircle className="w-4 h-4 text-green-400" />
               <span className="text-gray-300 text-sm font-medium">
-                Environnement: <span className="text-orange-400">Développement</span>
+                Environnement: <span className="text-green-400">Connecté</span>
               </span>
             </div>
           </div>
