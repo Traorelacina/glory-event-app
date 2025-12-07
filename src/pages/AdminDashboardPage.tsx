@@ -32,7 +32,7 @@ interface DashboardStats {
 
 export default function AdminDashboardPage() {
   const navigate = useNavigate();
-  const { token, admin, checkAuth, logout } = useAuthStore();
+  const { token, admin, checkAuth, logout, _hasHydrated } = useAuthStore();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [viewStats, setViewStats] = useState<ViewStatistics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,6 +49,12 @@ export default function AdminDashboardPage() {
   // VÉRIFICATION AUTH - VERSION FINALE CORRIGÉE
   // ==============================
   useEffect(() => {
+    // Attendre l'hydratation complète
+    if (!_hasHydrated) {
+      console.log('⏳ Dashboard - Attente hydratation...');
+      return;
+    }
+
     // Éviter les doubles vérifications
     if (hasCheckedAuth.current) return;
     hasCheckedAuth.current = true;
@@ -76,30 +82,17 @@ export default function AdminDashboardPage() {
     if (isAuth) {
       console.log('🟢 AUTHENTIFIÉ - Chargement du dashboard pour:', admin?.name);
     }
-  }, []); // Dépendances vides - exécution unique au montage
+  }, [_hasHydrated]); // Dépendance: _hasHydrated uniquement
 
   // ==============================
-  // VÉRIFICATION CONTINUE DU TOKEN (optionnel mais recommandé)
+  // CHARGEMENT DES DONNÉES
   // ==============================
   useEffect(() => {
-    // Ne vérifier que si la première vérification est passée
-    if (!hasCheckedAuth.current) return;
-    
-    // Vérifier si le token/admin disparaît pendant l'utilisation
-    const isAuth = checkAuth();
-    
-    if (!isAuth && !hasRedirected.current) {
-      console.log('⚠️ Session expirée ou invalide - Redirection...');
-      hasRedirected.current = true;
-      logout();
-      navigate('/admin/login', { replace: true });
+    // Attendre l'hydratation et l'authentification
+    if (!_hasHydrated || !hasCheckedAuth.current) {
+      return;
     }
-  }, [token, admin]); // Dépendances: token et admin uniquement
 
-  // ==============================
-  // CHARGEMENT DES DONNÉES - VERSION CORRIGÉE
-  // ==============================
-  useEffect(() => {
     // Ne charger les données QUE si authentifié
     if (!checkAuth()) {
       console.log('❌ Pas authentifié, arrêt du chargement des données');
@@ -160,35 +153,21 @@ export default function AdminDashboardPage() {
     // Lancer les deux appels en parallèle
     fetchDashboard();
     fetchViewStatistics();
-  }, [token]); // Dépendance: token uniquement
+  }, [_hasHydrated, token]);
 
   // ==============================
-  // EFFETS D'ANIMATION
+  // LOADER PENDANT L'HYDRATATION
   // ==============================
-  useEffect(() => {
-    const handleScroll = () => setScrollY(window.scrollY);
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setIsVisible((prev) => ({ ...prev, [entry.target.id]: true }));
-          }
-        });
-      },
-      { threshold: 0.1 }
+  if (!_hasHydrated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <Loader className="w-16 h-16 text-purple-400 animate-spin mx-auto mb-4" />
+          <p className="text-white text-lg font-semibold">Initialisation...</p>
+        </div>
+      </div>
     );
-
-    document.querySelectorAll('[data-animate]').forEach((el) => {
-      observer.observe(el);
-    });
-
-    return () => observer.disconnect();
-  }, [stats, viewStats]);
+  }
 
   // ==============================
   // LOADER PENDANT LA VÉRIFICATION
