@@ -8,7 +8,7 @@ interface AuthState {
   isLoading: boolean;
   error: string | null;
   isAuthenticated: boolean;
-  _hasHydrated: boolean; // Flag pour savoir si le store est hydraté
+  _hasHydrated: boolean;
   setHasHydrated: (state: boolean) => void;
   login: (credentials: LoginCredentials) => Promise<void>;
   logout: () => Promise<void>;
@@ -175,6 +175,7 @@ export const useAuthStore = create<AuthState>()(
         admin: state.admin,
         token: state.token,
         isAuthenticated: state.isAuthenticated,
+        // Ne PAS persister _hasHydrated, il doit être réinitialisé à chaque chargement
       }),
       onRehydrateStorage: () => {
         console.log('💧 Début de l\'hydratation du store...');
@@ -182,6 +183,10 @@ export const useAuthStore = create<AuthState>()(
         return (state, error) => {
           if (error) {
             console.error('❌ Erreur d\'hydratation:', error);
+            // Marquer comme hydraté même en cas d'erreur pour éviter le blocage
+            if (state) {
+              state._hasHydrated = true;
+            }
             return;
           }
           
@@ -197,14 +202,15 @@ export const useAuthStore = create<AuthState>()(
             // Vérifier la cohérence des données
             if (state.admin && state.token) {
               state.isAuthenticated = true;
-              console.log('✅ Session active détectée');
+              console.log('👤 Session restaurée:', state.admin.email);
             } else {
               state.isAuthenticated = false;
               console.log('📭 Aucune session active');
             }
             
-            // Marquer l'hydratation comme complète
+            // CRITIQUE: Marquer l'hydratation comme complète
             state._hasHydrated = true;
+            console.log('✅ Flag _hasHydrated défini à true');
           }
         };
       },
