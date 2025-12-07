@@ -38,15 +38,34 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [scrollY, setScrollY] = useState(0);
   const [isVisible, setIsVisible] = useState<{ [key: string]: boolean }>({});
 
   // Refs pour éviter les doubles vérifications/redirections
   const hasCheckedAuth = useRef(false);
   const hasRedirected = useRef(false);
+  const hydrationTimeout = useRef<NodeJS.Timeout | null>(null);
 
   // ==============================
-  // VÉRIFICATION AUTH - VERSION FINALE CORRIGÉE
+  // FORCER L'HYDRATATION SI BLOQUÉE
+  // ==============================
+  useEffect(() => {
+    // Force le flag d'hydratation après 200ms si pas encore fait
+    hydrationTimeout.current = setTimeout(() => {
+      if (!_hasHydrated) {
+        console.warn('⚠️ Timeout d\'hydratation - Forçage du flag');
+        useAuthStore.setState({ _hasHydrated: true });
+      }
+    }, 200);
+    
+    return () => {
+      if (hydrationTimeout.current) {
+        clearTimeout(hydrationTimeout.current);
+      }
+    };
+  }, []);
+
+  // ==============================
+  // VÉRIFICATION AUTH APRÈS HYDRATATION
   // ==============================
   useEffect(() => {
     // Attendre l'hydratation complète
@@ -56,53 +75,67 @@ export default function AdminDashboardPage() {
     }
 
     // Éviter les doubles vérifications
-    if (hasCheckedAuth.current) return;
+    if (hasCheckedAuth.current) {
+      console.log('⚠️ Vérification déjà effectuée');
+      return;
+    }
+    
     hasCheckedAuth.current = true;
 
     console.log('🔍 Dashboard - Vérification authentification...');
+    console.log('📊 État actuel:', { 
+      hasToken: !!token, 
+      hasAdmin: !!admin,
+      adminEmail: admin?.email,
+      hydrated: _hasHydrated
+    });
     
     const isAuth = checkAuth();
     
-    console.log('📊 État d\'authentification:', { 
-      isAuth,
-      hasToken: !!token, 
-      hasAdmin: !!admin,
-      adminName: admin?.name
-    });
+    console.log('✅ Résultat checkAuth:', isAuth);
     
     // Si pas authentifié, rediriger IMMÉDIATEMENT
     if (!isAuth && !hasRedirected.current) {
       console.log('🔴 NON AUTHENTIFIÉ - Redirection vers login...');
       hasRedirected.current = true;
-      logout(); // Nettoyer toute session corrompue
+      logout();
       navigate('/admin/login', { replace: true });
       return;
     }
     
     if (isAuth) {
-      console.log('🟢 AUTHENTIFIÉ - Chargement du dashboard pour:', admin?.name);
+      console.log('🟢 AUTHENTIFIÉ - Dashboard accessible pour:', admin?.email);
     }
-  }, [_hasHydrated]); // Dépendance: _hasHydrated uniquement
+  }, [_hasHydrated, token, admin]);
 
   // ==============================
   // CHARGEMENT DES DONNÉES
   // ==============================
   useEffect(() => {
     // Attendre l'hydratation et l'authentification
-    if (!_hasHydrated || !hasCheckedAuth.current) {
+    if (!_hasHydrated) {
+      console.log('⏳ Données - En attente hydratation...');
+      return;
+    }
+
+    if (!hasCheckedAuth.current) {
+      console.log('⏳ Données - En attente vérification auth...');
       return;
     }
 
     // Ne charger les données QUE si authentifié
-    if (!checkAuth()) {
+    const isAuth = checkAuth();
+    if (!isAuth) {
       console.log('❌ Pas authentifié, arrêt du chargement des données');
       return;
     }
 
+    console.log('📥 Démarrage du chargement des données...');
+
     const fetchDashboard = async () => {
       try {
         setLoading(true);
-        console.log('📥 Chargement des stats du dashboard...');
+        console.log('📊 Chargement des stats du dashboard...');
         
         if (!token) {
           throw new Error('Token manquant');
@@ -133,7 +166,7 @@ export default function AdminDashboardPage() {
     const fetchViewStatistics = async () => {
       try {
         setStatsLoading(true);
-        console.log('📥 Chargement des statistiques de vues...');
+        console.log('📊 Chargement des statistiques de vues...');
         
         if (!token) {
           throw new Error('Token manquant');
@@ -153,7 +186,7 @@ export default function AdminDashboardPage() {
     // Lancer les deux appels en parallèle
     fetchDashboard();
     fetchViewStatistics();
-  }, [_hasHydrated, token]);
+  }, [_hasHydrated, token, checkAuth]);
 
   // ==============================
   // LOADER PENDANT L'HYDRATATION
@@ -164,15 +197,18 @@ export default function AdminDashboardPage() {
         <div className="text-center">
           <Loader className="w-16 h-16 text-purple-400 animate-spin mx-auto mb-4" />
           <p className="text-white text-lg font-semibold">Initialisation...</p>
+          <p className="text-purple-300 text-sm mt-2">Chargement de votre session</p>
         </div>
       </div>
     );
   }
 
   // ==============================
-  // LOADER PENDANT LA VÉRIFICATION
+  // VÉRIFICATION AUTH (après hydratation)
   // ==============================
-  if (!checkAuth()) {
+  const isAuthenticated = checkAuth();
+  
+  if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
         <div className="text-center">
