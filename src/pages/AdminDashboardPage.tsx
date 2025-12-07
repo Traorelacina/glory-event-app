@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/AuthStore';
 import { adminApi } from '../../services/api-client';
@@ -32,7 +32,7 @@ interface DashboardStats {
 
 export default function AdminDashboardPage() {
   const navigate = useNavigate();
-  const { token, admin } = useAuthStore();
+  const { token, admin, checkAuth, logout } = useAuthStore();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [viewStats, setViewStats] = useState<ViewStatistics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -41,30 +41,68 @@ export default function AdminDashboardPage() {
   const [scrollY, setScrollY] = useState(0);
   const [isVisible, setIsVisible] = useState<{ [key: string]: boolean }>({});
 
+  // Refs pour éviter les doubles vérifications/redirections
+  const hasCheckedAuth = useRef(false);
+  const hasRedirected = useRef(false);
+
   // ==============================
-  // VÉRIFICATION AUTH - MÊME MÉTHODE QUE LOGIN
+  // VÉRIFICATION AUTH - VERSION FINALE CORRIGÉE
   // ==============================
   useEffect(() => {
-    console.log('Dashboard - Vérification auth:', { 
+    // Éviter les doubles vérifications
+    if (hasCheckedAuth.current) return;
+    hasCheckedAuth.current = true;
+
+    console.log('🔍 Dashboard - Vérification authentification...');
+    
+    const isAuth = checkAuth();
+    
+    console.log('📊 État d\'authentification:', { 
+      isAuth,
       hasToken: !!token, 
-      hasAdmin: !!admin
+      hasAdmin: !!admin,
+      adminName: admin?.name
     });
     
-    // Si pas de token ou admin, rediriger vers login
-    if (!token || !admin) {
-      console.log('🔴 Non authentifié, redirection vers login...');
+    // Si pas authentifié, rediriger IMMÉDIATEMENT
+    if (!isAuth && !hasRedirected.current) {
+      console.log('🔴 NON AUTHENTIFIÉ - Redirection vers login...');
+      hasRedirected.current = true;
+      logout(); // Nettoyer toute session corrompue
       navigate('/admin/login', { replace: true });
       return;
     }
     
-    console.log('🟢 Authentifié, chargement du dashboard...');
-  }, [token, admin, navigate]);
+    if (isAuth) {
+      console.log('🟢 AUTHENTIFIÉ - Chargement du dashboard pour:', admin?.name);
+    }
+  }, []); // Dépendances vides - exécution unique au montage
 
   // ==============================
-  // CHARGEMENT DES DONNÉES
+  // VÉRIFICATION CONTINUE DU TOKEN (optionnel mais recommandé)
   // ==============================
   useEffect(() => {
-    if (!token || !admin) {
+    // Ne vérifier que si la première vérification est passée
+    if (!hasCheckedAuth.current) return;
+    
+    // Vérifier si le token/admin disparaît pendant l'utilisation
+    const isAuth = checkAuth();
+    
+    if (!isAuth && !hasRedirected.current) {
+      console.log('⚠️ Session expirée ou invalide - Redirection...');
+      hasRedirected.current = true;
+      logout();
+      navigate('/admin/login', { replace: true });
+    }
+  }, [token, admin]); // Dépendances: token et admin uniquement
+
+  // ==============================
+  // CHARGEMENT DES DONNÉES - VERSION CORRIGÉE
+  // ==============================
+  useEffect(() => {
+    // Ne charger les données QUE si authentifié
+    if (!checkAuth()) {
+      console.log('❌ Pas authentifié, arrêt du chargement des données');
       return;
     }
 
@@ -72,6 +110,11 @@ export default function AdminDashboardPage() {
       try {
         setLoading(true);
         console.log('📥 Chargement des stats du dashboard...');
+        
+        if (!token) {
+          throw new Error('Token manquant');
+        }
+
         const response = await adminApi.getDashboard(token);
         setStats(response.data);
         setError(null);
@@ -80,9 +123,10 @@ export default function AdminDashboardPage() {
         console.error('❌ Erreur chargement dashboard:', err);
         
         // Si erreur 401 (token invalide), déconnecter
-        if (err.status === 401) {
-          console.log('🔴 Token invalide, déconnexion...');
-          localStorage.removeItem('auth-store');
+        if (err.status === 401 && !hasRedirected.current) {
+          console.log('🔴 Token invalide (401) - Déconnexion...');
+          hasRedirected.current = true;
+          logout();
           navigate('/admin/login', { replace: true });
           return;
         }
@@ -97,52 +141,29 @@ export default function AdminDashboardPage() {
       try {
         setStatsLoading(true);
         console.log('📥 Chargement des statistiques de vues...');
+        
+        if (!token) {
+          throw new Error('Token manquant');
+        }
+
         const statistics = await statisticsService.getStatistics(token);
         console.log('✅ Statistiques de vues chargées:', statistics);
         setViewStats(statistics);
       } catch (err: any) {
         console.error('❌ Erreur stats vues:', err);
+        // Ne pas bloquer le dashboard si les stats de vues échouent
       } finally {
         setStatsLoading(false);
       }
     };
 
+    // Lancer les deux appels en parallèle
     fetchDashboard();
     fetchViewStatistics();
-  }, [token, admin, navigate]);
+  }, [token]); // Dépendance: token uniquement
 
   // ==============================
-  // LOADER PENDANT LA VÉRIFICATION
-  // ==============================
-  if (!token || !admin) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <Loader className="w-16 h-16 text-purple-400 animate-spin mx-auto mb-4" />
-          <p className="text-white text-lg font-semibold">Vérification d'authentification...</p>
-          <p className="text-purple-200 text-sm mt-2">Redirection vers la page de connexion</p>
-        </div>
-      </div>
-    );
-  }
-
-  // ==============================
-  // LOADER PENDANT LE CHARGEMENT DES DONNÉES
-  // ==============================
-  if (loading && !stats) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <Loader className="w-16 h-16 text-purple-400 animate-spin mx-auto mb-4" />
-          <p className="text-white text-lg font-semibold">Chargement du dashboard...</p>
-          <p className="text-purple-200 text-sm mt-2">Récupération des données en cours</p>
-        </div>
-      </div>
-    );
-  }
-
-  // ==============================
-  // EFFETS D'ANIMATION (inchangés)
+  // EFFETS D'ANIMATION
   // ==============================
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
@@ -168,6 +189,38 @@ export default function AdminDashboardPage() {
 
     return () => observer.disconnect();
   }, [stats, viewStats]);
+
+  // ==============================
+  // LOADER PENDANT LA VÉRIFICATION
+  // ==============================
+  if (!checkAuth()) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <Loader className="w-16 h-16 text-purple-400 animate-spin mx-auto mb-4" />
+          <p className="text-white text-lg font-semibold">Vérification d'authentification...</p>
+          <p className="text-purple-200 text-sm mt-2">Redirection en cours</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ==============================
+  // LOADER PENDANT LE CHARGEMENT DES DONNÉES
+  // ==============================
+  if (loading && !stats) {
+    return (
+      <AdminLayout>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <Loader className="w-16 h-16 text-purple-600 animate-spin mx-auto mb-4" />
+            <p className="text-gray-900 text-lg font-semibold">Chargement du dashboard...</p>
+            <p className="text-purple-600 text-sm mt-2">Bienvenue {admin?.name}</p>
+          </div>
+        </div>
+      </AdminLayout>
+    );
+  }
 
   // ==============================
   // RENDU PRINCIPAL
@@ -460,7 +513,7 @@ export default function AdminDashboardPage() {
         ) : null}
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes float {
           0%, 100% { transform: translateY(0) translateX(0); }
           25% { transform: translateY(-20px) translateX(10px); }
