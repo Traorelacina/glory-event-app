@@ -6,7 +6,7 @@ import { statisticsService } from '../../services/statisticsService';
 import { 
   Loader, AlertCircle, Package, ShoppingCart, Clock, 
   Mail, TrendingUp, Activity, Sparkles, Star, ArrowRight,
-  Eye, Calendar, BarChart3
+  Eye, Calendar, BarChart3, Users, FolderOpen, Globe
 } from 'lucide-react';
 import AdminLayout from '../components/AdminLayout';
 import { Chart, Bars, Transform, Layer, Ticks, Labels } from 'rumble-charts';
@@ -217,7 +217,7 @@ export default function AdminDashboardPage() {
   // ==============================
   return (
     <AdminLayout>
-      <div className="min-h-screen">
+      <div className="min-h-screen p-4 md:p-6">
         {/* Hero Header */}
         <section className="relative mb-8 overflow-hidden rounded-3xl">
           <div className="absolute inset-0 bg-gradient-to-br from-purple-900 via-pink-900 to-purple-900">
@@ -269,60 +269,265 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
-        {/* Stats */}
+        {/* Stats Grid */}
         {loading ? (
-          <div className="flex flex-col items-center justify-center h-96 bg-gradient-to-br from-purple-50 to-pink-50 rounded-3xl shadow-2xl border border-purple-100">
+          <div className="flex flex-col items-center justify-center h-96 bg-gradient-to-br from-purple-50 to-pink-50 rounded-3xl shadow-2xl border border-purple-100 mb-8">
             <Loader className="animate-spin text-purple-600 mb-4" size={60} />
-            <p className="text-gray-700 font-semibold text-lg">Chargement...</p>
+            <p className="text-gray-700 font-semibold text-lg">Chargement des statistiques...</p>
           </div>
         ) : stats ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <StatCard 
-              label="Vues Total" 
-              value={viewStats?.total_views || 0} 
-              icon={Eye}
-              gradient="from-indigo-500 to-blue-500"
-              subtitle="Depuis le début"
-              loading={statsLoading}
-            />
-            <StatCard 
-              label="Vues Aujourd'hui" 
-              value={viewStats?.today_views || 0} 
-              icon={Calendar}
-              gradient="from-green-500 to-emerald-500"
-              subtitle="Aujourd'hui"
-              loading={statsLoading}
-            />
-            <StatCard 
-              label="Produits" 
-              value={stats.total_produits} 
-              icon={Package}
-              gradient="from-pink-500 to-rose-500"
-              subtitle="Catalogue"
-            />
-            <StatCard 
-              label="Commandes" 
-              value={stats.total_commandes} 
-              icon={ShoppingCart}
-              gradient="from-blue-500 to-cyan-500"
-              subtitle="Total"
-            />
-            <StatCard 
-              label="En attente" 
-              value={stats.commandes_en_attente} 
-              icon={Clock}
-              gradient="from-amber-500 to-orange-500"
-              subtitle="À traiter"
-              highlight={true}
-            />
-            <StatCard 
-              label="Contacts" 
-              value={stats.total_contacts} 
-              icon={Mail}
-              gradient="from-teal-500 to-emerald-500"
-              subtitle="Reçus"
-            />
-          </div>
+          <>
+            {/* Cartes de statistiques */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <StatCard 
+                label="Vues Total" 
+                value={viewStats?.total_views || 0} 
+                icon={Eye}
+                gradient="from-indigo-500 to-blue-500"
+                subtitle="Depuis le début"
+                loading={statsLoading}
+              />
+              <StatCard 
+                label="Vues Aujourd'hui" 
+                value={viewStats?.today_views || 0} 
+                icon={Calendar}
+                gradient="from-green-500 to-emerald-500"
+                subtitle="Aujourd'hui"
+                loading={statsLoading}
+              />
+              <StatCard 
+                label="Vues du Mois" 
+                value={viewStats?.month_views || 0} 
+                icon={TrendingUp}
+                gradient="from-purple-500 to-pink-500"
+                subtitle="Ce mois"
+                loading={statsLoading}
+              />
+              <StatCard 
+                label="Services" 
+                value={stats.total_services} 
+                icon={FolderOpen}
+                gradient="from-teal-500 to-emerald-500"
+                subtitle="Total services"
+              />
+              <StatCard 
+                label="Produits" 
+                value={stats.total_produits} 
+                icon={Package}
+                gradient="from-pink-500 to-rose-500"
+                subtitle="Catalogue"
+              />
+              <StatCard 
+                label="Commandes" 
+                value={stats.total_commandes} 
+                icon={ShoppingCart}
+                gradient="from-blue-500 to-cyan-500"
+                subtitle="Total"
+              />
+              <StatCard 
+                label="En attente" 
+                value={stats.commandes_en_attente} 
+                icon={Clock}
+                gradient="from-amber-500 to-orange-500"
+                subtitle="À traiter"
+                highlight={true}
+              />
+              <StatCard 
+                label="Contacts" 
+                value={stats.total_contacts} 
+                icon={Mail}
+                gradient="from-violet-500 to-purple-500"
+                subtitle="Reçus"
+              />
+              <StatCard 
+                label="Portfolio" 
+                value={stats.total_portfolio} 
+                icon={Globe}
+                gradient="from-rose-500 to-red-500"
+                subtitle="Projets"
+              />
+              <StatCard 
+                label="Vues Annuelles" 
+                value={viewStats?.year_views || 0} 
+                icon={BarChart3}
+                gradient="from-indigo-500 to-purple-500"
+                subtitle="Cette année"
+                loading={statsLoading}
+              />
+            </div>
+
+            {/* Section Graphiques */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+              {/* Graphique des vues quotidiennes */}
+              <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                      <BarChart3 className="text-blue-600" />
+                      Vues Quotidiennes (7 derniers jours)
+                    </h3>
+                    <p className="text-gray-600 text-sm">Évolution des visites journalières</p>
+                  </div>
+                  <div className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-semibold">
+                    Temps Réel
+                  </div>
+                </div>
+                {viewStats?.daily_views ? (
+                  <ViewsBarChart 
+                    data={viewStats.daily_views} 
+                    loading={statsLoading}
+                  />
+                ) : (
+                  <div className="h-64 flex items-center justify-center text-gray-500">
+                    {statsLoading ? (
+                      <Loader className="animate-spin text-blue-600" size={32} />
+                    ) : (
+                      <>
+                        <BarChart3 className="w-12 h-12 mb-3 text-gray-400" />
+                        <p className="font-medium">Aucune donnée disponible</p>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Graphique des pages populaires */}
+              <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                      <Eye className="text-purple-600" />
+                      Pages les Plus Visités
+                    </h3>
+                    <p className="text-gray-600 text-sm">Top 5 des pages avec le plus de vues</p>
+                  </div>
+                  <div className="bg-purple-50 text-purple-700 px-3 py-1 rounded-full text-sm font-semibold">
+                    Analyse
+                  </div>
+                </div>
+                {viewStats?.page_views ? (
+                  <PageViewsChart 
+                    data={viewStats.page_views} 
+                    loading={statsLoading}
+                  />
+                ) : (
+                  <div className="h-64 flex items-center justify-center text-gray-500">
+                    {statsLoading ? (
+                      <Loader className="animate-spin text-purple-600" size={32} />
+                    ) : (
+                      <>
+                        <Eye className="w-12 h-12 mb-3 text-gray-400" />
+                        <p className="font-medium">Aucune donnée de pages</p>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Deuxième ligne de graphiques */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+              {/* Graphique des vues mensuelles */}
+              <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                      <TrendingUp className="text-teal-600" />
+                      Vues Mensuelles
+                    </h3>
+                    <p className="text-gray-600 text-sm">Répartition par mois de l'année</p>
+                  </div>
+                  <div className="bg-teal-50 text-teal-700 px-3 py-1 rounded-full text-sm font-semibold">
+                    Année {new Date().getFullYear()}
+                  </div>
+                </div>
+                {viewStats?.monthly_views ? (
+                  <MonthlyViewsChart 
+                    data={viewStats.monthly_views} 
+                    loading={statsLoading}
+                  />
+                ) : (
+                  <div className="h-64 flex items-center justify-center text-gray-500">
+                    {statsLoading ? (
+                      <Loader className="animate-spin text-teal-600" size={32} />
+                    ) : (
+                      <>
+                        <TrendingUp className="w-12 h-12 mb-3 text-gray-400" />
+                        <p className="font-medium">Aucune donnée mensuelle</p>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Vues récentes */}
+              <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                      <Calendar className="text-blue-600" />
+                      Vues Récentes
+                    </h3>
+                    <p className="text-gray-600 text-sm">Historique des dernières visites</p>
+                  </div>
+                  <div className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-semibold">
+                    Derniers jours
+                  </div>
+                </div>
+                {viewStats?.daily_views ? (
+                  <RecentViews 
+                    data={viewStats.daily_views.slice(-5)} 
+                    loading={statsLoading}
+                  />
+                ) : (
+                  <div className="h-64 flex items-center justify-center text-gray-500">
+                    {statsLoading ? (
+                      <Loader className="animate-spin text-blue-600" size={32} />
+                    ) : (
+                      <>
+                        <Calendar className="w-12 h-12 mb-3 text-gray-400" />
+                        <p className="font-medium">Aucune vue récente</p>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Actions rapides */}
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl shadow-xl border border-purple-100 p-6 mb-8">
+              <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                <Sparkles className="text-purple-600" />
+                Actions Rapides
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <QuickActionButton 
+                  label="Gérer les Produits"
+                  href="/admin/products"
+                  icon={Package}
+                  gradient="from-blue-500 to-cyan-500"
+                />
+                <QuickActionButton 
+                  label="Voir les Commandes"
+                  href="/admin/orders"
+                  icon={ShoppingCart}
+                  gradient="from-green-500 to-emerald-500"
+                />
+                <QuickActionButton 
+                  label="Messages Contacts"
+                  href="/admin/contacts"
+                  icon={Mail}
+                  gradient="from-purple-500 to-pink-500"
+                />
+                <QuickActionButton 
+                  label="Ajouter un Service"
+                  href="/admin/services/new"
+                  icon={FolderOpen}
+                  gradient="from-orange-500 to-red-500"
+                />
+              </div>
+            </div>
+          </>
         ) : null}
       </div>
 
@@ -493,7 +698,7 @@ function MonthlyViewsChart({ data, loading }: MonthlyViewsChartProps) {
   );
 }
 
-// Composant pour le graphique à barres avec Rumble Charts -
+// Composant pour le graphique à barres avec Rumble Charts
 interface ViewsBarChartProps {
   data: Array<{ date: string; views: number }>;
   loading: boolean;
@@ -544,16 +749,16 @@ function ViewsBarChart({ data, loading }: ViewsBarChartProps) {
       {/* En-tête avec résumé amélioré */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 p-6 bg-gradient-to-r from-[#ad5945]/5 via-[#d38074]/5 to-[#ca715b]/5 rounded-2xl border border-[#ad5945]/20">
         <div className="text-center p-4 bg-white rounded-xl shadow-sm border border-[#ad5945]/10">
-          <p className="text-sm text-gray-600 font-medium mb-1 font-inter">Période analysée</p>
-          <p className="text-lg font-bold text-[#ad5945] font-playfair">7 jours</p>
+          <p className="text-sm text-gray-600 font-medium mb-1">Période analysée</p>
+          <p className="text-lg font-bold text-[#ad5945]">7 jours</p>
         </div>
         <div className="text-center p-4 bg-white rounded-xl shadow-sm border border-[#ad5945]/10">
-          <p className="text-sm text-gray-600 font-medium mb-1 font-inter">Total des vues</p>
-          <p className="text-lg font-bold text-[#ad5945] font-playfair">{totalViews.toLocaleString()} visites</p>
+          <p className="text-sm text-gray-600 font-medium mb-1">Total des vues</p>
+          <p className="text-lg font-bold text-[#ad5945]">{totalViews.toLocaleString()} visites</p>
         </div>
         <div className="text-center p-4 bg-white rounded-xl shadow-sm border border-[#ad5945]/10">
-          <p className="text-sm text-gray-600 font-medium mb-1 font-inter">Moyenne quotidienne</p>
-          <p className="text-lg font-bold text-[#ad5945] font-playfair">{Math.round(totalViews / 7).toLocaleString()} vues/jour</p>
+          <p className="text-sm text-gray-600 font-medium mb-1">Moyenne quotidienne</p>
+          <p className="text-lg font-bold text-[#ad5945]">{Math.round(totalViews / 7).toLocaleString()} vues/jour</p>
         </div>
       </div>
 
@@ -582,8 +787,7 @@ function ViewsBarChart({ data, loading }: ViewsBarChartProps) {
                   fill: '#64748b',
                   fontSize: 11,
                   fontWeight: '600',
-                  textAnchor: 'end',
-                  fontFamily: 'Inter, sans-serif'
+                  textAnchor: 'end'
                 }}
                 labelAttributes={{ dx: -10 }}
               />
@@ -647,15 +851,14 @@ function ViewsBarChart({ data, loading }: ViewsBarChartProps) {
                   fill: '#374151',
                   fontSize: 12,
                   fontWeight: 'bold',
-                  textAnchor: 'middle',
-                  fontFamily: 'Inter, sans-serif'
+                  textAnchor: 'middle'
                 }}
               />
             </Layer>
           </Chart>
         </div>
 
-        {/* Légende horizontale PARFAITEMENT alignée */}
+        {/* Légende horizontale */}
         <div className="px-4">
           <div className="flex justify-between items-start" style={{ 
             marginLeft: '5%', 
@@ -665,7 +868,7 @@ function ViewsBarChart({ data, loading }: ViewsBarChartProps) {
             {last7Days.map((day, index) => {
               const isPeak = day.views === maxViews;
               const isSelected = selectedIndex === index;
-              const barWidth = 88 / last7Days.length; // Ajusté pour mieux s'aligner
+              const barWidth = 88 / last7Days.length;
               
               return (
                 <div 
@@ -674,7 +877,6 @@ function ViewsBarChart({ data, loading }: ViewsBarChartProps) {
                   style={{ width: `${barWidth}%` }}
                   onClick={() => setSelectedIndex(selectedIndex === index ? null : index)}
                 >
-                  {/* Carte de légende compacte */}
                   <div 
                     className={`p-3 rounded-xl text-center w-full min-w-0 transition-all duration-300 ${
                       isSelected 
@@ -684,31 +886,27 @@ function ViewsBarChart({ data, loading }: ViewsBarChartProps) {
                           : 'bg-gray-50 hover:bg-gray-100 border border-gray-200'
                     } ${selectedIndex !== null && !isSelected ? 'opacity-40' : 'opacity-100'}`}
                   >
-                    {/* Nom du jour */}
-                    <div className={`text-xs font-medium mb-1 font-inter uppercase ${isSelected ? 'text-white' : 'text-gray-600'}`}>
+                    <div className={`text-xs font-medium mb-1 uppercase ${isSelected ? 'text-white' : 'text-gray-600'}`}>
                       {new Date(day.date).toLocaleDateString('fr-FR', { 
                         weekday: 'short'
                       })}
                     </div>
                     
-                    {/* Date complète */}
-                    <div className={`text-[10px] mb-1 font-inter ${isSelected ? 'text-white/80' : 'text-gray-500'}`}>
+                    <div className={`text-[10px] mb-1 ${isSelected ? 'text-white/80' : 'text-gray-500'}`}>
                       {new Date(day.date).toLocaleDateString('fr-FR', { 
                         day: 'numeric', 
                         month: 'short' 
                       })}
                     </div>
                     
-                    {/* Nombre de vues */}
-                    <div className={`text-sm font-bold font-playfair ${
+                    <div className={`text-sm font-bold ${
                       isSelected ? 'text-white' : isPeak ? 'text-[#ad5945]' : 'text-gray-700'
                     }`}>
                       {day.views.toLocaleString()}
                     </div>
                     
-                    {/* Indicateur de pic ou sélection */}
                     {(isPeak || isSelected) && (
-                      <div className={`text-[10px] px-1 py-0.5 rounded-full font-bold mt-1 font-inter ${
+                      <div className={`text-[10px] px-1 py-0.5 rounded-full font-bold mt-1 ${
                         isSelected ? 'bg-white text-[#ad5945]' : 'bg-gradient-to-r from-[#ad5945] to-[#d38074] text-white'
                       }`}>
                         {isSelected ? 'Vues' : 'PIC'}
