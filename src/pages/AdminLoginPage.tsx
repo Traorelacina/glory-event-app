@@ -5,7 +5,7 @@ import { Mail, Lock, AlertCircle, Loader, Sparkles, CheckCircle, ArrowRight } fr
 
 export default function AdminLoginPage() {
   const navigate = useNavigate();
-  const { login, isLoading, error, clearError, checkAuth } = useAuthStore();
+  const { login, isLoading, error, clearError, checkAuth, _hasHydrated } = useAuthStore();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -18,9 +18,15 @@ export default function AdminLoginPage() {
   const isSubmitting = useRef(false);
 
   // ==============================
-  // VÉRIFICATION INITIALE D'AUTHENTIFICATION
+  // VÉRIFICATION INITIALE - Attendre l'hydratation
   // ==============================
   useEffect(() => {
+    // Ne vérifier qu'après hydratation complète
+    if (!_hasHydrated) {
+      console.log('⏳ Attente de l\'hydratation...');
+      return;
+    }
+
     const isAuth = checkAuth();
     
     if (isAuth && !hasRedirected.current) {
@@ -28,27 +34,29 @@ export default function AdminLoginPage() {
       hasRedirected.current = true;
       navigate('/admin/dashboard', { replace: true });
     }
-  }, [checkAuth, navigate]);
+  }, [_hasHydrated, checkAuth, navigate]);
 
   // ==============================
-  // VÉRIFICATION APRÈS LOGIN
+  // VÉRIFICATION APRÈS LOGIN RÉUSSI
   // ==============================
   useEffect(() => {
-    // Ne vérifier qu'après un login réussi (pas de loading, pas d'erreur)
-    if (!isLoading && !error && !hasRedirected.current) {
-      const isAuth = checkAuth();
-      
-      if (isAuth) {
-        console.log('✅ Login réussi, redirection vers dashboard...');
-        hasRedirected.current = true;
-        
-        // Petit délai pour s'assurer que le store est bien persisté
-        setTimeout(() => {
-          navigate('/admin/dashboard', { replace: true });
-        }, 100);
-      }
+    // Ne vérifier qu'après hydratation et login réussi
+    if (!_hasHydrated || isLoading || error || hasRedirected.current) {
+      return;
     }
-  }, [isLoading, error, checkAuth, navigate]);
+    
+    const isAuth = checkAuth();
+    
+    if (isAuth) {
+      console.log('✅ Login réussi, redirection vers dashboard...');
+      hasRedirected.current = true;
+      
+      // Délai pour s'assurer que la persistence est complète
+      setTimeout(() => {
+        navigate('/admin/dashboard', { replace: true });
+      }, 150);
+    }
+  }, [_hasHydrated, isLoading, error, checkAuth, navigate]);
 
   // ==============================
   // EFFET PARALLAX
@@ -122,6 +130,18 @@ export default function AdminLoginPage() {
   };
 
   const displayError = localError || error;
+
+  // Afficher un loader pendant l'hydratation
+  if (!_hasHydrated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <Loader className="w-16 h-16 text-purple-400 animate-spin mx-auto mb-4" />
+          <p className="text-white text-lg font-semibold">Initialisation...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen font-sans text-[#111827] overflow-x-hidden">
