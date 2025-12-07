@@ -27,25 +27,23 @@ export const useAuthStore = create<AuthState>()(
       _hasHydrated: false,
 
       setHasHydrated: (state: boolean) => {
+        console.log('🔧 setHasHydrated appelé avec:', state);
         set({ _hasHydrated: state });
       },
 
       checkAuth: () => {
         const state = get();
+        const { admin, token, _hasHydrated } = state;
         
-        // Attendre que l'hydratation soit complète
-        if (!state._hasHydrated) {
-          console.log('⏳ En attente de l\'hydratation du store...');
-          return false;
-        }
-        
-        const { admin, token } = state;
+        // Ne PAS attendre l'hydratation dans checkAuth
+        // Juste vérifier si on a les données
         const isAuth = !!(admin && token);
         
-        console.log('🔍 Vérification auth:', { 
+        console.log('🔍 checkAuth:', { 
           hasAdmin: !!admin, 
           hasToken: !!token, 
-          isAuthenticated: isAuth 
+          isAuth,
+          hydrated: _hasHydrated
         });
         
         // Mettre à jour isAuthenticated si nécessaire
@@ -69,18 +67,21 @@ export const useAuthStore = create<AuthState>()(
         
         try {
           console.log('🔐 Tentative de connexion...');
-          console.log('🔐 Login attempt to:', `${import.meta.env.VITE_API_BASE_URL || 'https://detailed-odette-freelence-76d5d470.koyeb.app/api'}/login`);
           
           const response: LoginResponse = await authLogin(credentials);
           
-          console.log('✅ Login response:', { user: response.user, token: response.token });
+          console.log('✅ Login response reçue:', { 
+            hasUser: !!response.user, 
+            hasToken: !!response.token,
+            email: response.user?.email 
+          });
           
           // Validation de la réponse
           if (!response.user || !response.token) {
             throw new Error('Réponse invalide du serveur');
           }
 
-          console.log('✅ Connexion réussie:', response.user.email);
+          console.log('✅ Connexion réussie pour:', response.user.email);
           
           // Mise à jour de l'état avec toutes les données
           set({
@@ -91,34 +92,36 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: true,
           });
           
-          console.log('💾 Session sauvegardée dans localStorage');
+          console.log('💾 Session sauvegardée');
           
-          // Forcer la persistence immédiate
-          await new Promise(resolve => setTimeout(resolve, 50));
+          // Attendre un peu pour la persistence
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          // Vérifier que les données sont bien sauvegardées
+          const newState = get();
+          console.log('✅ État après login:', {
+            hasAdmin: !!newState.admin,
+            hasToken: !!newState.token,
+            isAuth: newState.isAuthenticated
+          });
           
         } catch (error: any) {
           console.error('❌ Erreur de connexion:', error);
           
           let errorMessage = 'Erreur de connexion. Veuillez réessayer.';
           
-          // Gestion des codes d'erreur HTTP
           if (error.status === 401) {
             errorMessage = 'Email ou mot de passe incorrect';
           } else if (error.status === 403) {
-            errorMessage = 'Accès non autorisé. Vous n\'avez pas les permissions requises.';
+            errorMessage = 'Accès non autorisé';
           } else if (error.status === 429) {
-            errorMessage = 'Trop de tentatives. Veuillez patienter quelques minutes.';
+            errorMessage = 'Trop de tentatives. Veuillez patienter.';
           } else if (error.status >= 500) {
-            errorMessage = 'Erreur serveur. Veuillez réessayer plus tard.';
+            errorMessage = 'Erreur serveur. Réessayez plus tard.';
           } else if (error.message) {
             errorMessage = error.message;
-          } else if (error.networkError) {
-            errorMessage = 'Impossible de se connecter au serveur. Vérifiez votre connexion internet.';
-          } else if (error.timeout) {
-            errorMessage = 'La connexion a pris trop de temps. Veuillez réessayer.';
           }
           
-          // Réinitialiser l'état en cas d'erreur
           set({
             admin: null,
             token: null,
@@ -127,7 +130,6 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: false,
           });
           
-          // Propager l'erreur pour que le composant puisse la gérer
           throw new Error(errorMessage);
         }
       },
@@ -135,9 +137,9 @@ export const useAuthStore = create<AuthState>()(
       logout: async () => {
         const { token } = get();
         
-        console.log('🚪 Déconnexion en cours...');
+        console.log('🚪 Déconnexion...');
         
-        // Réinitialiser l'état immédiatement
+        // Réinitialiser l'état
         set({
           admin: null,
           token: null,
@@ -146,21 +148,17 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: false,
         });
         
-        console.log('✅ State réinitialisé');
-        
         // Nettoyer le localStorage
         try {
           localStorage.removeItem('auth-store');
           console.log('🧹 LocalStorage nettoyé');
         } catch (e) {
-          console.error('Erreur lors du nettoyage du localStorage:', e);
+          console.error('Erreur nettoyage localStorage:', e);
         }
         
-        // Appel API de déconnexion (non bloquant)
+        // Appel API déconnexion (non bloquant)
         if (token) {
-          authLogout(token)
-            .then(() => console.log('✅ Déconnexion serveur réussie'))
-            .catch((err) => console.warn('⚠️ Erreur logout serveur (non critique):', err));
+          authLogout(token).catch(() => {});
         }
       },
 
@@ -175,43 +173,56 @@ export const useAuthStore = create<AuthState>()(
         admin: state.admin,
         token: state.token,
         isAuthenticated: state.isAuthenticated,
-        // Ne PAS persister _hasHydrated, il doit être réinitialisé à chaque chargement
       }),
       onRehydrateStorage: () => {
-        console.log('💧 Début de l\'hydratation du store...');
+        console.log('💧 Début hydratation store...');
         
         return (state, error) => {
           if (error) {
-            console.error('❌ Erreur d\'hydratation:', error);
-            // Marquer comme hydraté même en cas d'erreur pour éviter le blocage
+            console.error('❌ Erreur hydratation:', error);
             if (state) {
               state._hasHydrated = true;
+              console.log('✅ Flag hydratation forcé malgré erreur');
             }
             return;
           }
           
-          if (state) {
-            const hydrationState = {
-              hasAdmin: !!state.admin,
-              hasToken: !!state.token,
-              timestamp: new Date().toISOString()
-            };
-            
-            console.log('✅ Store hydraté avec succès:', hydrationState);
-            
-            // Vérifier la cohérence des données
-            if (state.admin && state.token) {
-              state.isAuthenticated = true;
-              console.log('👤 Session restaurée:', state.admin.email);
-            } else {
-              state.isAuthenticated = false;
-              console.log('📭 Aucune session active');
-            }
-            
-            // CRITIQUE: Marquer l'hydratation comme complète
-            state._hasHydrated = true;
-            console.log('✅ Flag _hasHydrated défini à true');
+          if (!state) {
+            console.warn('⚠️ State null après hydratation');
+            return;
           }
+          
+          const hasData = !!(state.admin && state.token);
+          
+          console.log('✅ Store hydraté:', {
+            hasAdmin: !!state.admin,
+            hasToken: !!state.token,
+            email: state.admin?.email,
+            timestamp: new Date().toISOString()
+          });
+          
+          // Synchroniser isAuthenticated
+          if (hasData) {
+            state.isAuthenticated = true;
+            console.log('👤 Session active:', state.admin.email);
+          } else {
+            state.isAuthenticated = false;
+            console.log('📭 Aucune session');
+          }
+          
+          // CRITIQUE: Marquer hydratation complète
+          state._hasHydrated = true;
+          console.log('✅ _hasHydrated = true');
+          
+          // Vérification finale
+          setTimeout(() => {
+            const currentState = useAuthStore.getState();
+            console.log('🔍 Vérification post-hydratation:', {
+              hydrated: currentState._hasHydrated,
+              hasAdmin: !!currentState.admin,
+              hasToken: !!currentState.token
+            });
+          }, 50);
         };
       },
     }
